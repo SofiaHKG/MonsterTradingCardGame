@@ -5,8 +5,6 @@ import at.mtgc.server.http.Response;
 import at.mtgc.server.util.HttpRequestParser;
 import at.mtgc.server.util.HttpResponseFormatter;
 import at.mtgc.server.util.HttpSocket;
-import java.net.Socket;
-
 
 import java.io.IOException;
 
@@ -15,23 +13,29 @@ public class RequestHandler {
     private final HttpSocket httpSocket;
     private final Application application;
 
-    public RequestHandler(Socket socket, Application application) throws IOException {
-        this.httpSocket = new HttpSocket(socket);
+    public RequestHandler(HttpSocket httpSocket, Application application) {
+        this.httpSocket = httpSocket;
         this.application = application;
     }
 
     public void handle() {
-        HttpRequestParser requestParser = new HttpRequestParser();
-        HttpResponseFormatter responseFormatter = new HttpResponseFormatter();
+        HttpRequestParser parser = new HttpRequestParser();
+        HttpResponseFormatter formatter = new HttpResponseFormatter();
 
         try {
             String httpRequest = httpSocket.read();
-            Request request = requestParser.parse(httpRequest);
+            if (httpRequest == null || httpRequest.trim().isEmpty()) {
+                System.out.println("Received an empty request. Ignoring.");
+                return;
+            }
 
+            Request request = parser.parse(httpRequest);
             Response response = application.handle(request);
 
-            String httpResponse = responseFormatter.format(response);
+            String httpResponse = formatter.format(response);
             httpSocket.write(httpResponse);
+        } catch (IllegalArgumentException e) {
+            System.err.println("Invalid HTTP Request: " + e.getMessage());
         } catch (IOException e) {
             System.err.println("Error handling request: " + e.getMessage());
         } finally {
