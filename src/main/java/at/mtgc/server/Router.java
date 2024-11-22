@@ -3,12 +3,19 @@ package at.mtgc.server;
 import at.mtgc.server.http.Request;
 import at.mtgc.server.http.Response;
 import at.mtgc.server.http.Status;
+import at.mtgc.application.user.controller.UserController;
+import at.mtgc.application.user.service.UserService;
+import at.mtgc.application.user.repository.UserRepository;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class Router implements Application {
     private final Map<String, Application> routes = new HashMap<>();
+
+    public Router() {
+        initializeRoutes();
+    }
 
     public void addRoute(String path, Application application) {
         routes.put(path, application);
@@ -26,5 +33,14 @@ public class Router implements Application {
         response.setHeader("Content-Type", "text/plain");
         response.setBody("404 Not Found");
         return response;
+    }
+
+    public void initializeRoutes() {
+        UserRepository userRepository = new UserRepository();
+        UserService userService = new UserService(userRepository);
+        UserController userController = new UserController(userService);
+
+        addRoute("/users", userController);
+        addRoute("/sessions", userController);
     }
 }
