@@ -6,6 +6,9 @@ import at.mtgc.server.http.Status;
 import at.mtgc.application.user.controller.UserController;
 import at.mtgc.application.user.service.UserService;
 import at.mtgc.application.user.repository.UserRepository;
+import at.mtgc.application.packages.controller.PackageController;
+import at.mtgc.application.packages.service.PackageService;
+import at.mtgc.application.packages.repository.PackageRepository;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,11 +39,19 @@ public class Router implements Application {
     }
 
     public void initializeRoutes() {
+        // User Routes
         UserRepository userRepository = new UserRepository();
         UserService userService = new UserService(userRepository);
         UserController userController = new UserController(userService);
 
         addRoute("/users", userController);
         addRoute("/sessions", userController);
+
+        // Package Routes
+        PackageRepository packageRepository = new PackageRepository();
+        PackageService packageService = new PackageService(packageRepository);
+        PackageController packageController = new PackageController(packageService);
+
+        addRoute("/packages", packageController);
     }
 }
