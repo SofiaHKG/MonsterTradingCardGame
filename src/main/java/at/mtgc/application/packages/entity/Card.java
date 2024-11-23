@@ -1,48 +1,51 @@
 package at.mtgc.application.packages.entity;
 
-import java.util.UUID;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Card {
-    private UUID id;
+    private String id;
     private String name;
     private double damage;
 
-    public Card(UUID id, String name, double damage) {
+    @JsonCreator
+    public Card(
+            @JsonProperty("Id") String id,
+            @JsonProperty("Name") String name,
+            @JsonProperty("Damage") double damage
+    ) {
         this.id = id;
         this.name = name;
         this.damage = damage;
     }
 
-    public UUID getId() {
+    @JsonProperty("Id")
+    public String getId() {
         return id;
     }
 
-    public void setId(UUID id) {
+    @JsonProperty("Id")
+    public void setId(String id) {
         this.id = id;
     }
 
+    @JsonProperty("Name")
     public String getName() {
         return name;
     }
 
+    @JsonProperty("Name")
     public void setName(String name) {
         this.name = name;
     }
 
+    @JsonProperty("Damage")
     public double getDamage() {
         return damage;
     }
 
+    @JsonProperty("Damage")
     public void setDamage(double damage) {
         this.damage = damage;
-    }
-
-    @Override
-    public String toString() {
-        return "Card{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", damage=" + damage +
-                '}';
     }
 }

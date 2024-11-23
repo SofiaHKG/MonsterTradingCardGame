@@ -1,14 +1,17 @@
 package at.mtgc.application.packages.controller;
 
+import at.mtgc.application.packages.entity.Card;
 import at.mtgc.application.packages.entity.Package;
 import at.mtgc.application.packages.service.PackageService;
 import at.mtgc.server.http.Request;
 import at.mtgc.server.http.Response;
 import at.mtgc.server.http.Status;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.List;
 
 public class PackageController implements at.mtgc.server.Application {
     private final PackageService packageService;
@@ -25,7 +28,11 @@ public class PackageController implements at.mtgc.server.Application {
 
         if ("POST".equals(request.getMethod().toString())) {
             try {
-                Package pack = objectMapper.readValue(request.getBody(), Package.class);
+                // Deserialize JSON to List<Card>
+                List<Card> cards = objectMapper.readValue(request.getBody(), new TypeReference<List<Card>>() {});
+
+                // Create a new Package
+                Package pack = new Package(cards);
                 packageService.addPackage(pack);
 
                 response.setStatus(Status.CREATED);
