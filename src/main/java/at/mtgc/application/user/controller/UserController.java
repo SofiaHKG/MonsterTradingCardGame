@@ -16,7 +16,7 @@ public class UserController implements Application {
 
     public UserController(UserService userService) {
         this.userService = userService;
-        this.objectMapper = new ObjectMapper(); // JSON-Verarbeitung
+        this.objectMapper = new ObjectMapper();
     }
 
     @Override
@@ -32,23 +32,23 @@ public class UserController implements Application {
                             response.setStatus(Status.CREATED);
                         } else {
                             response.setStatus(Status.CONFLICT);
-                            response.setBody("User already exists.");
+                            response.setBody("User already exists\n");
                         }
                     } else if (request.getPath().equals("/sessions")) {
                         User user = parseUser(request);
                         User loggedInUser = userService.login(user.getUsername(), user.getPassword());
                         if (loggedInUser != null) {
                             response.setStatus(Status.OK);
-                            response.setBody(loggedInUser.getUsername() + "-mtcgToken");
+                            response.setBody(loggedInUser.getUsername() + "-mtcgToken\n"); // \n hinzugefügt
                         } else {
                             response.setStatus(Status.UNAUTHORIZED);
-                            response.setBody("Invalid username or password.");
+                            response.setBody("Login failed\n");
                         }
                     }
                 }
                 default -> {
                     response.setStatus(Status.METHOD_NOT_ALLOWED);
-                    response.setBody("Method not allowed.");
+                    response.setBody("Method not allowed\n");
                 }
             }
         } catch (IOException e) {
