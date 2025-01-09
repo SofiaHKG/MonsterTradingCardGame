@@ -36,3 +36,4 @@ build/
 
 ### Mac OS ###
 .DS_Store
+/src/main/java/at/mtgc/server/util/TestDatabase.java
