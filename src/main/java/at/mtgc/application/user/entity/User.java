@@ -7,6 +7,7 @@ public class User {
     private String username;
     private String password;
     private String token;
+    private int coins;
 
     public User() {}
 
@@ -17,6 +18,15 @@ public class User {
     ) {
         this.username = username;
         this.password = password;
+        this.token = "";
+        this.coins = 20;
+    }
+
+    public User(String username, String password, String token, int coins) {
+        this.username = username;
+        this.password = password;
+        this.token = token;
+        this.coins = coins;
     }
 
     @JsonProperty("Username")
@@ -45,5 +55,13 @@ public class User {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public int getCoins() {
+        return coins;
+    }
+
+    public void setCoins(int coins) {
+        this.coins = coins;
     }
 }

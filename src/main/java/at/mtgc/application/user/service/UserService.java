@@ -2,8 +2,9 @@ package at.mtgc.application.user.service;
 
 import at.mtgc.application.user.entity.User;
 import at.mtgc.application.user.repository.UserRepository;
+import at.mtgc.application.packages.entity.Card;
 
-import java.util.UUID;
+import java.util.List;
 
 public class UserService {
     private final UserRepository userRepository;
@@ -18,7 +19,7 @@ public class UserService {
 
     public User login(String username, String password) {
         User user = userRepository.findByUsername(username);
-        if (user != null && user.getPassword().equals(password)) {
+        if(user != null && user.getPassword().equals(password)) {
             String token = username + "-mtcgToken";
             user.setToken(token);
 
@@ -29,5 +30,15 @@ public class UserService {
             return user;
         }
         return null;
+    }
+
+    public User getUserByUsername(String username) {
+        return userRepository.getUserByUsername(username);
+    }
+
+    public List<Card> getUserCards(String username) {
+        System.out.println("Fetching cards for user in UserService: " + username); // Debug
+
+        return userRepository.getUserCards(username);
     }
 }

@@ -26,9 +26,14 @@ public class Router implements Application {
 
     @Override
     public Response handle(Request request) {
-        Application application = routes.get(request.getPath());
-        if (application != null) {
-            return application.handle(request);
+        System.out.println("Router received request: " + request.getMethod() + " " + request.getPath()); // Debug
+
+        if(routes.containsKey(request.getPath())) {
+            return routes.get(request.getPath()).handle(request);
+        }
+
+        if(request.getPath().startsWith("/users/")) {
+            return routes.get("/users/{username}").handle(request);
         }
 
         Response response = new Response();
@@ -45,7 +50,9 @@ public class Router implements Application {
         UserController userController = new UserController(userService);
 
         addRoute("/users", userController);
+        addRoute("/users/{username}", userController);
         addRoute("/sessions", userController);
+        addRoute("/cards", userController);
 
         // Package Routes
         PackageRepository packageRepository = new PackageRepository();
@@ -53,5 +60,6 @@ public class Router implements Application {
         PackageController packageController = new PackageController(packageService);
 
         addRoute("/packages", packageController);
+        addRoute("/transactions/packages", packageController);
     }
 }

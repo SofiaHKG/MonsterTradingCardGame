@@ -21,4 +21,11 @@ public class PackageService {
     public boolean hasPackages() {
         return packageRepository.hasPackages();
     }
+
+    public boolean acquirePackage(String username) {
+        boolean success = packageRepository.acquirePackage(username);
+        System.out.println("Acquire package result for " + username + ": " + success); // Debug
+        return success;
+    }
+
 }
