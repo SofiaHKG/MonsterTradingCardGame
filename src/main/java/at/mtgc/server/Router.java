@@ -53,6 +53,7 @@ public class Router implements Application {
         addRoute("/users/{username}", userController);
         addRoute("/sessions", userController);
         addRoute("/cards", userController);
+        addRoute("/deck", userController);
 
         // Package Routes
         PackageRepository packageRepository = new PackageRepository();

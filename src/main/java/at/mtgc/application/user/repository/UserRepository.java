@@ -122,4 +122,36 @@ public class UserRepository {
 
         return cards;
     }
+
+    public List<Card> getUserDeck(String username) {
+        String sql = "SELECT id, name, damage FROM cards WHERE owner = ? AND in_deck = TRUE";
+        List<Card> deck = new ArrayList<>();
+
+        try(Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, username);
+            System.out.println("Executing SQL: " + stmt.toString()); // Debugging
+            ResultSet rs = stmt.executeQuery();
+
+            while(rs.next()) {
+                deck.add(new Card(
+                        rs.getString("id"),
+                        rs.getString("name"),
+                        rs.getDouble("damage")
+                ));
+            }
+
+            if(deck.size() != 4) {
+                System.out.println("User " + username + " has an incomplete deck."); // Debugging
+                return new ArrayList<>(); // Returns empty list
+            }
+
+        } catch(SQLException e) {
+            System.err.println("Error retrieving deck for user " + username + ": " + e.getMessage());
+        }
+
+        return deck;
+    }
+
 }

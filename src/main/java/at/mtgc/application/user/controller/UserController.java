@@ -41,6 +41,8 @@ public class UserController implements Application {
                         return handleGetUser(request);
                     } else if(request.getPath().equals("/cards")) {
                         return handleGetCards(request);
+                    } else if(request.getPath().equals("/deck")) {
+                        return handleGetDeck(request);
                     }
                 }
                 default -> {
@@ -150,6 +152,40 @@ public class UserController implements Application {
             response.setStatus(Status.UNAUTHORIZED);
             response.setBody("Login failed\n");
         }
+        return response;
+    }
+
+    private Response handleGetDeck(Request request) {
+        Response response = new Response();
+        String token = request.getHeader("Authorization");
+
+        if(token == null || !token.startsWith("Bearer ")) {
+            response.setStatus(Status.UNAUTHORIZED);
+            response.setBody("{\"message\":\"Missing or invalid token\"}");
+            return response;
+        }
+
+        String username = token.replace("Bearer ", "").replace("-mtcgToken", "");
+        System.out.println("Fetching deck for user: " + username); // Debugging
+
+        List<Card> deck = userService.getUserDeck(username);
+        if(deck.isEmpty()) {
+            System.out.println("Deck incomplete for user: " + username); // Debugging
+            response.setStatus(Status.BAD_REQUEST);
+            response.setBody("{\"message\":\"Deck must contain exactly 4 cards\"}");
+            return response;
+        }
+
+        response.setStatus(Status.OK);
+        response.setHeader("Content-Type", "application/json");
+
+        try {
+            response.setBody(objectMapper.writeValueAsString(deck));
+        } catch(IOException e) {
+            response.setStatus(Status.INTERNAL_SERVER_ERROR);
+            response.setBody("{\"message\":\"Error serializing deck\"}");
+        }
+
         return response;
     }
 

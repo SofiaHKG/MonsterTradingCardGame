@@ -41,4 +41,8 @@ public class UserService {
 
         return userRepository.getUserCards(username);
     }
+
+    public List<Card> getUserDeck(String username) {
+        return userRepository.getUserDeck(username);
+    }
 }
