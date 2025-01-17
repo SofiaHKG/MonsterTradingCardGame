@@ -2,19 +2,27 @@ package at.mtgc.application.user.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User {
+    @JsonAlias({"Username"})
+    @JsonProperty("username")
     private String username;
+
+    @JsonAlias({"Password"})
+    @JsonProperty("password")
     private String password;
+
     private String token;
     private int coins;
 
     public User() {}
 
-    @JsonCreator
     public User(
-            @JsonProperty("Username") String username,
-            @JsonProperty("Password") String password
+            @JsonProperty("username") String username,
+            @JsonProperty("password") String password
     ) {
         this.username = username;
         this.password = password;
@@ -29,22 +37,22 @@ public class User {
         this.coins = coins;
     }
 
-    @JsonProperty("Username")
+    @JsonProperty("username")
     public String getUsername() {
         return username;
     }
 
-    @JsonProperty("Username")
+    @JsonProperty("username")
     public void setUsername(String username) {
         this.username = username;
     }
 
-    @JsonProperty("Password")
+    @JsonProperty("password")
     public String getPassword() {
         return password;
     }
 
-    @JsonProperty("Password")
+    @JsonProperty("password")
     public void setPassword(String password) {
         this.password = password;
     }

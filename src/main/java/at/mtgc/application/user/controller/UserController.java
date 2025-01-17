@@ -48,6 +48,8 @@ public class UserController implements Application {
                 case PUT -> {
                     if (request.getPath().equals("/deck")) {
                         return handleUpdateDeck(request);
+                    } else if(request.getPath().startsWith("/users/")) {
+                        return handleUpdateUser(request);
                     }
                 }
                 default -> {
@@ -174,13 +176,7 @@ public class UserController implements Application {
         System.out.println("Fetching deck for user: " + username); // Debugging
 
         List<Card> deck = userService.getUserDeck(username);
-        if(deck.isEmpty()) {
-            System.out.println("Deck incomplete for user: " + username); // Debugging
-            response.setStatus(Status.BAD_REQUEST);
-            response.setBody("{\"message\":\"Deck must contain exactly 4 cards\"}");
-            return response;
-        }
-
+        // Unabhängig davon, ob das Deck leer ist oder nicht, geben wir HTTP 200 zurück:
         response.setStatus(Status.OK);
         response.setHeader("Content-Type", "application/json");
 
@@ -229,6 +225,65 @@ public class UserController implements Application {
             response.setBody("{\"message\":\"Deck updated successfully\"}");
         } catch(IOException e) {
             System.err.println("JSON Parsing Error: " + e.getMessage()); // Debugging
+            response.setStatus(Status.INTERNAL_SERVER_ERROR);
+            response.setBody("{\"message\":\"Error processing request\"}");
+        }
+
+        return response;
+    }
+
+    private Response handleUpdateUser(Request request) {
+        System.out.println("Processing PUT /users request for: " + request.getPath()); // Debug
+        System.out.println("Request Body: " + request.getBody()); // Debug
+
+        Response response = new Response();
+        String token = request.getHeader("Authorization");
+
+        if(token == null || !token.startsWith("Bearer ")) {
+            System.out.println("Authorization failed - Missing or invalid token"); // Debug
+            response.setStatus(Status.UNAUTHORIZED);
+            response.setBody("{\"message\":\"Missing or invalid token\"}");
+            return response;
+        }
+
+        String username = token.replace("Bearer ", "").replace("-mtcgToken", "");
+        String[] parts = request.getPath().split("/");
+
+        if(parts.length < 3) {
+            System.out.println("Invalid request format"); // Debug
+            response.setStatus(Status.BAD_REQUEST);
+            response.setBody("{\"message\":\"Invalid request format\"}");
+            return response;
+        }
+
+        String targetUsername = parts[2];
+
+        // Überprüfen, ob der Nutzer sich selbst bearbeitet
+        if(!username.equals(targetUsername)) {
+            System.out.println("Forbidden: User " + username + " tried to update " + targetUsername); // Debug
+            response.setStatus(Status.FORBIDDEN);
+            response.setBody("{\"message\":\"You can only update your own profile\"}");
+            return response;
+        }
+
+        try {
+            System.out.println("Parsing JSON request body..."); // Debug
+            User updatedUser = objectMapper.readValue(request.getBody(), User.class);
+            System.out.println("Parsed User Object: " + updatedUser); // Debug
+
+            boolean success = userService.updateUser(targetUsername, updatedUser);
+
+            if(!success) {
+                System.out.println("User update failed in database"); // Debug
+                response.setStatus(Status.BAD_REQUEST);
+                response.setBody("{\"message\":\"Failed to update user\"}");
+                return response;
+            }
+
+            response.setStatus(Status.OK);
+            response.setBody("{\"message\":\"User updated successfully\"}");
+        } catch(IOException e) {
+            System.out.println("Exception: " + e.getMessage()); // Debug
             response.setStatus(Status.INTERNAL_SERVER_ERROR);
             response.setBody("{\"message\":\"Error processing request\"}");
         }

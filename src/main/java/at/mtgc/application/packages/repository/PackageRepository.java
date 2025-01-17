@@ -14,17 +14,23 @@ public class PackageRepository {
     public void addPackage(Package pack) {
         String sql = "INSERT INTO packages DEFAULT VALUES RETURNING id";
 
-        try(Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try(Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
+            try(PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                stmt.executeUpdate();
+                ResultSet rs = stmt.getGeneratedKeys();
 
-            stmt.executeUpdate();
-            ResultSet rs = stmt.getGeneratedKeys();
+                if(rs.next()) {
+                    int packageId = rs.getInt(1);
 
-            if(rs.next()) {
-                int packageId = rs.getInt(1);
-
-                for(Card card : pack.getCards()) {
-                    addCardToDatabase(card, packageId);
+                    for(Card card : pack.getCards()) {
+                        if(!addCardToDatabase(card, packageId, conn)) {
+                            conn.rollback();
+                            System.err.println("Rolling back package creation due to existing card: " + card.getId());
+                            return;
+                        }
+                    }
+                    conn.commit();
                 }
             }
         } catch(SQLException e) {
@@ -32,19 +38,18 @@ public class PackageRepository {
         }
     }
 
-    private void addCardToDatabase(Card card, int packageId) {
+    private boolean addCardToDatabase(Card card, int packageId, Connection conn) {
         String checkSql = "SELECT COUNT(*) FROM cards WHERE id = ?";
         String insertSql = "INSERT INTO cards (id, name, damage, package_id) VALUES (?,?,?,?)";
 
-        try(Connection conn = DatabaseManager.getConnection();
-            PreparedStatement checkStmt = conn.prepareStatement(checkSql);
+        try(PreparedStatement checkStmt = conn.prepareStatement(checkSql);
             PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
 
             checkStmt.setObject(1, UUID.fromString(card.getId()));
             ResultSet rs = checkStmt.executeQuery();
             if(rs.next() && rs.getInt(1) > 0) {
                 System.err.println("Card with ID " + card.getId() + " already exists. Skipping insertion.");
-                return;
+                return false;
             }
 
             insertStmt.setObject(1, UUID.fromString(card.getId()));
@@ -52,10 +57,12 @@ public class PackageRepository {
             insertStmt.setDouble(3, card.getDamage());
             insertStmt.setInt(4, packageId);
             insertStmt.executeUpdate();
+            return true;
 
         } catch(SQLException e) {
             System.err.println("Error saving card: " + e.getMessage());
         }
+        return false;
     }
 
     public Package getNextPackage() {
@@ -68,7 +75,8 @@ public class PackageRepository {
             if(rs.next()) {
                 int packageId = rs.getInt("id");
                 System.out.println("Found package with ID: " + packageId); // Debug
-                return getPackageById(packageId);
+                Package pkg = getPackageById(packageId);
+                return (pkg != null) ? pkg : null;
             } else {
                 System.out.println("No packages available"); // Debug
             }
@@ -124,44 +132,62 @@ public class PackageRepository {
         String checkCoinsSQL = "SELECT coins FROM users WHERE username = ?";
         String updateCoinsSQL = "UPDATE users SET coins = coins - 5 WHERE username = ?";
         String getPackageSQL = "SELECT id FROM packages ORDER BY id ASC LIMIT 1";
-        String assignCardsSQL = "UPDATE cards SET package_id = NULL, owner = ? WHERE package_id = ?";
+        String assignCardsSQL = "UPDATE cards SET owner = ? WHERE package_id = ?";
+        String resetPackageIdSQL = "UPDATE cards SET package_id = NULL WHERE package_id = ?";
+        String deletePackageSQL = "DELETE FROM packages WHERE id = ?";
 
-        try(Connection conn = DatabaseManager.getConnection();
-             PreparedStatement checkCoinsStmt = conn.prepareStatement(checkCoinsSQL);
-             PreparedStatement updateCoinsStmt = conn.prepareStatement(updateCoinsSQL);
-             PreparedStatement getPackageStmt = conn.prepareStatement(getPackageSQL);
-             PreparedStatement assignCardsStmt = conn.prepareStatement(assignCardsSQL)) {
+        try(Connection conn = DatabaseManager.getConnection()) {
+            conn.setAutoCommit(false);
 
-            checkCoinsStmt.setString(1, username);
-            ResultSet rs = checkCoinsStmt.executeQuery();
+            try(PreparedStatement checkCoinsStmt = conn.prepareStatement(checkCoinsSQL);
+                PreparedStatement updateCoinsStmt = conn.prepareStatement(updateCoinsSQL);
+                PreparedStatement getPackageStmt = conn.prepareStatement(getPackageSQL);
+                PreparedStatement assignCardsStmt = conn.prepareStatement(assignCardsSQL);
+                PreparedStatement resetPackageIdStmt = conn.prepareStatement(resetPackageIdSQL);
+                PreparedStatement deletePackageStmt = conn.prepareStatement(deletePackageSQL)) {
 
-            if(!rs.next() || rs.getInt("coins") < 5) {
-                return false;
-            }
+                // Check if enough coins available
+                checkCoinsStmt.setString(1, username);
+                ResultSet rs = checkCoinsStmt.executeQuery();
+                if(!rs.next() || rs.getInt("coins") < 5) {
+                    return false;
+                }
 
-            ResultSet packageRs = getPackageStmt.executeQuery();
-            if(!packageRs.next()) {
-                return false;
-            }
+                ResultSet packageRs = getPackageStmt.executeQuery();
+                if(!packageRs.next()) {
+                    return false;
+                }
+                int packageId = packageRs.getInt("id");
 
-            int packageId = packageRs.getInt("id");
+                // Withdraw coins
+                updateCoinsStmt.setString(1, username);
+                updateCoinsStmt.executeUpdate();
 
-            updateCoinsStmt.setString(1, username);
-            updateCoinsStmt.executeUpdate();
+                // Assign cards
+                assignCardsStmt.setString(1, username);
+                assignCardsStmt.setInt(2, packageId);
+                int updatedRows = assignCardsStmt.executeUpdate();
+                if(updatedRows == 0) {
+                    conn.rollback();
+                    System.err.println("Couldn't assign cards to package " + packageId);
+                    return false;
+                }
 
-            assignCardsStmt.setString(1, username);
-            assignCardsStmt.setInt(2, packageId);
-            assignCardsStmt.executeUpdate();
-
-            String deletePackageSQL = "DELETE FROM packages WHERE id = ?";
-            try(PreparedStatement deletePackageStmt = conn.prepareStatement(deletePackageSQL)) {
+                // Reset package ID and delete package
+                resetPackageIdStmt.setInt(1, packageId);
+                resetPackageIdStmt.executeUpdate();
                 deletePackageStmt.setInt(1, packageId);
                 deletePackageStmt.executeUpdate();
-            }
 
-            return true;
+                conn.commit();
+                return true;
+
+            } catch(SQLException e) {
+                conn.rollback();
+                System.err.println("Error acquiring package: " + e.getMessage());
+            }
         } catch(SQLException e) {
-            System.err.println("Error acquiring package: " + e.getMessage());
+            System.err.println("Database error: " + e.getMessage());
         }
         return false;
     }

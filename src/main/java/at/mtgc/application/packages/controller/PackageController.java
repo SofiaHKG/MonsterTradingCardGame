@@ -87,7 +87,7 @@ public class PackageController implements at.mtgc.server.Application {
         String username = token.replace("Bearer ", "").replace("-mtcgToken", "");
 
         if(packageService.acquirePackage(username)) {
-            response.setStatus(Status.OK);
+            response.setStatus(Status.CREATED);
             response.setBody("{\"message\":\"Package acquired successfully\"}");
         } else {
             response.setStatus(Status.BAD_REQUEST);

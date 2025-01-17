@@ -190,4 +190,20 @@ public class UserRepository {
         }
     }
 
+    public boolean updateUser(String username, User updatedUser) {
+        String sql = "UPDATE users SET password = ? WHERE username = ?";
+
+        try(Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, updatedUser.getPassword());  // Passwort ändern
+            stmt.setString(2, username);
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        } catch(SQLException e) {
+            System.err.println("Error updating user: " + e.getMessage());
+            return false;
+        }
+    }
+
 }

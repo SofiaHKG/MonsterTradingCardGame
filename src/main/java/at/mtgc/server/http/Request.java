@@ -8,7 +8,7 @@ public class Request {
     private String path;
     private final Map<String, String> headers = new HashMap<>();
     private String body;
-    private String http; // Neues Feld hinzugefügt
+    private String http;
 
     // Getter und Setter für http
     public String getHttp() {

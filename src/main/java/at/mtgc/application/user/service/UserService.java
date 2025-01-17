@@ -65,4 +65,9 @@ public class UserService {
 
         return userRepository.updateUserDeck(username, cardIds);
     }
+
+    public boolean updateUser(String username, User updatedUser) {
+        return userRepository.updateUser(username, updatedUser);
+    }
+
 }
