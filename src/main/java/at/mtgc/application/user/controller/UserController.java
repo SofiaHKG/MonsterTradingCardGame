@@ -45,6 +45,11 @@ public class UserController implements Application {
                         return handleGetDeck(request);
                     }
                 }
+                case PUT -> {
+                    if (request.getPath().equals("/deck")) {
+                        return handleUpdateDeck(request);
+                    }
+                }
                 default -> {
                     response.setStatus(Status.METHOD_NOT_ALLOWED);
                     response.setBody("Method not allowed\n");
@@ -184,6 +189,48 @@ public class UserController implements Application {
         } catch(IOException e) {
             response.setStatus(Status.INTERNAL_SERVER_ERROR);
             response.setBody("{\"message\":\"Error serializing deck\"}");
+        }
+
+        return response;
+    }
+
+    private Response handleUpdateDeck(Request request) {
+        Response response = new Response();
+        String token = request.getHeader("Authorization");
+
+        if(token == null || !token.startsWith("Bearer ")) {
+            response.setStatus(Status.UNAUTHORIZED);
+            response.setBody("{\"message\":\"Missing or invalid token\"}");
+            return response;
+        }
+
+        String username = token.replace("Bearer ", "").replace("-mtcgToken", "");
+        System.out.println("Updating deck for user: " + username); // Debugging
+
+        try {
+            // Parse JSON-Array from Request-Body
+            System.out.println("Request Body: " + request.getBody());
+            List<String> cardIds = objectMapper.readValue(request.getBody(), List.class);
+
+            if(cardIds.size() != 4) {
+                response.setStatus(Status.BAD_REQUEST);
+                response.setBody("{\"message\":\"Deck must contain exactly 4 cards\"}");
+                return response;
+            }
+
+            boolean success = userService.updateUserDeck(username, cardIds);
+            if(!success) {
+                response.setStatus(Status.BAD_REQUEST);
+                response.setBody("{\"message\":\"Invalid cards or ownership issue\"}");
+                return response;
+            }
+
+            response.setStatus(Status.OK);
+            response.setBody("{\"message\":\"Deck updated successfully\"}");
+        } catch(IOException e) {
+            System.err.println("JSON Parsing Error: " + e.getMessage()); // Debugging
+            response.setStatus(Status.INTERNAL_SERVER_ERROR);
+            response.setBody("{\"message\":\"Error processing request\"}");
         }
 
         return response;

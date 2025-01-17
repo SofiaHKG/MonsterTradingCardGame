@@ -45,4 +45,24 @@ public class UserService {
     public List<Card> getUserDeck(String username) {
         return userRepository.getUserDeck(username);
     }
+
+    public boolean updateUserDeck(String username, List<String> cardIds) {
+        System.out.println("Updating deck for user: " + username); // Debugging
+        System.out.println("Received card IDs: " + cardIds); // Debugging
+
+        // Control if cards belong to the user
+        List<Card> userCards = userRepository.getUserCards(username);
+        List<String> ownedCardIds = userCards.stream().map(Card::getId).toList();
+
+        System.out.println("User owns cards: " + ownedCardIds); // Debugging
+
+        for(String cardId : cardIds) {
+            if(!ownedCardIds.contains(cardId)) {
+                System.out.println("Card ID " + cardId + " does not belong to user " + username); // Debugging
+                return false;
+            }
+        }
+
+        return userRepository.updateUserDeck(username, cardIds);
+    }
 }

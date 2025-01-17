@@ -7,6 +7,7 @@ import at.mtgc.server.util.DatabaseManager;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class UserRepository {
 
@@ -152,6 +153,41 @@ public class UserRepository {
         }
 
         return deck;
+    }
+
+    public boolean updateUserDeck(String username, List<String> cardIds) {
+        String resetDeckSQL = "UPDATE cards SET in_deck = FALSE WHERE owner = ?";
+        String updateDeckSQL = "UPDATE cards SET in_deck = TRUE WHERE owner = ? AND id = ?";
+
+        try(Connection conn = DatabaseManager.getConnection();
+             PreparedStatement resetStmt = conn.prepareStatement(resetDeckSQL);
+             PreparedStatement updateStmt = conn.prepareStatement(updateDeckSQL)) {
+
+            // Remove all of the user's cards from the deck
+            System.out.println("Executing SQL: " + resetDeckSQL + " with username = " + username); // Debugging
+            resetStmt.setString(1, username);
+            resetStmt.executeUpdate();
+
+            // Put the new 4 cards into the deck
+            for(String cardId : cardIds) {
+                System.out.println("Executing SQL: " + updateDeckSQL + " with username = " + username + " and card ID = " + cardId); // Debugging
+                updateStmt.setString(1, username);
+                updateStmt.setObject(2, UUID.fromString(cardId));
+                int rowsAffected = updateStmt.executeUpdate();
+
+                if(rowsAffected == 0) {
+                    System.err.println("Failed to update deck: Card ID " + cardId + " not found for user " + username);
+                    return false;
+                }
+            }
+
+            System.out.println("Deck successfully updated for user: " + username); // Debugging
+            return true;
+
+        } catch(SQLException e) {
+            System.err.println("Error updating deck for user " + username + ": " + e.getMessage());
+            return false;
+        }
     }
 
 }
