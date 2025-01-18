@@ -26,13 +26,33 @@ public class Router implements Application {
 
     @Override
     public Response handle(Request request) {
-        System.out.println("Router received request: " + request.getMethod() + " " + request.getPath()); // Debug
+        System.out.println("Router received request: "
+                + request.getMethod() + " " + request.getPath()); // Debug
 
-        if(routes.containsKey(request.getPath())) {
-            return routes.get(request.getPath()).handle(request);
+        // Original full path (e.g. "/deck?format=plain"):
+        String rawPath = request.getPath();
+
+        // Split into pathOnly and queryString
+        String pathOnly;
+        String queryString = null;
+
+        int questionMarkIndex = rawPath.indexOf('?');
+        if(questionMarkIndex != -1) {
+            pathOnly    = rawPath.substring(0, questionMarkIndex);
+            queryString = rawPath.substring(questionMarkIndex + 1);
+        } else {
+            // no '?', so no query string
+            pathOnly    = rawPath;
         }
 
-        if(request.getPath().startsWith("/users/")) {
+        request.setPath(pathOnly);
+        request.setQueryString(queryString);
+
+        if(routes.containsKey(pathOnly)) {
+            return routes.get(pathOnly).handle(request);
+        }
+
+        if(pathOnly.startsWith("/users/")) {
             return routes.get("/users/{username}").handle(request);
         }
 

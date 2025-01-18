@@ -164,8 +164,9 @@ public class UserController implements Application {
 
     private Response handleGetDeck(Request request) {
         Response response = new Response();
-        String token = request.getHeader("Authorization");
 
+        // Check token
+        String token = request.getHeader("Authorization");
         if(token == null || !token.startsWith("Bearer ")) {
             response.setStatus(Status.UNAUTHORIZED);
             response.setBody("{\"message\":\"Missing or invalid token\"}");
@@ -173,18 +174,43 @@ public class UserController implements Application {
         }
 
         String username = token.replace("Bearer ", "").replace("-mtcgToken", "");
-        System.out.println("Fetching deck for user: " + username); // Debugging
-
         List<Card> deck = userService.getUserDeck(username);
-        // Unabhängig davon, ob das Deck leer ist oder nicht, geben wir HTTP 200 zurück:
-        response.setStatus(Status.OK);
-        response.setHeader("Content-Type", "application/json");
 
-        try {
-            response.setBody(objectMapper.writeValueAsString(deck));
-        } catch(IOException e) {
-            response.setStatus(Status.INTERNAL_SERVER_ERROR);
-            response.setBody("{\"message\":\"Error serializing deck\"}");
+        // Get query string from request
+        String query = request.getQueryString();  // z.B. "format=plain" oder null
+        boolean plainFormatRequested = false;
+
+        if(query != null && query.equalsIgnoreCase("format=plain")) {
+            plainFormatRequested = true;
+        }
+
+        response.setStatus(Status.OK);
+
+        if(plainFormatRequested) {
+            response.setHeader("Content-Type", "text/plain");
+            if(deck.isEmpty()) {
+                response.setBody("No cards in deck.\n");
+            } else {
+                StringBuilder sb = new StringBuilder();
+                for(Card c : deck) {
+                    sb.append(c.getId())
+                            .append(" - ")
+                            .append(c.getName())
+                            .append(" (Damage: ")
+                            .append(c.getDamage())
+                            .append(")\n");
+                }
+                response.setBody(sb.toString());
+            }
+        } else {
+            // Standard JSON output
+            response.setHeader("Content-Type", "application/json");
+            try {
+                response.setBody(objectMapper.writeValueAsString(deck));
+            } catch(IOException e) {
+                response.setStatus(Status.INTERNAL_SERVER_ERROR);
+                response.setBody("{\"message\":\"Error serializing deck\"}");
+            }
         }
 
         return response;
@@ -258,7 +284,7 @@ public class UserController implements Application {
 
         String targetUsername = parts[2];
 
-        // Überprüfen, ob der Nutzer sich selbst bearbeitet
+        // Check if user is editing himself
         if(!username.equals(targetUsername)) {
             System.out.println("Forbidden: User " + username + " tried to update " + targetUsername); // Debug
             response.setStatus(Status.FORBIDDEN);

@@ -10,6 +10,16 @@ public class Request {
     private String body;
     private String http;
 
+    private String queryString; // for stroring "format=plain"
+
+    public String getQueryString() {
+        return queryString;
+    }
+
+    public void setQueryString(String queryString) {
+        this.queryString = queryString;
+    }
+
     // Getter und Setter für http
     public String getHttp() {
         return http;
