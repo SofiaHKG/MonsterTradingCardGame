@@ -1,6 +1,5 @@
 package at.mtgc.application.user.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonAlias;
@@ -18,6 +17,15 @@ public class User {
     private String token;
     private int coins;
 
+    @JsonProperty("Name")
+    private String fullname;
+
+    @JsonProperty("Bio")
+    private String bio;
+
+    @JsonProperty("Image")
+    private String image;
+
     public User() {}
 
     public User(
@@ -30,11 +38,14 @@ public class User {
         this.coins = 20;
     }
 
-    public User(String username, String password, String token, int coins) {
+    public User(String username, String password, String token, int coins, String fullname, String bio, String image) {
         this.username = username;
         this.password = password;
         this.token = token;
         this.coins = coins;
+        this.fullname = fullname;
+        this.bio = bio;
+        this.image = image;
     }
 
     @JsonProperty("username")
@@ -72,4 +83,13 @@ public class User {
     public void setCoins(int coins) {
         this.coins = coins;
     }
+
+    public String getFullname() { return fullname; }
+    public void setFullname(String fullname) { this.fullname = fullname; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+
+    public String getImage() { return image; }
+    public void setImage(String image) { this.image = image; }
 }

@@ -53,7 +53,7 @@ public class UserRepository {
         String sql = "UPDATE users SET token = ? WHERE username = ?";
 
         try(Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, token);
             stmt.setString(2, username);
@@ -81,7 +81,10 @@ public class UserRepository {
                         rs.getString("username"),
                         rs.getString("password"),
                         rs.getString("token"),
-                        rs.getInt("coins")
+                        rs.getInt("coins"),
+                        rs.getString("fullName"),
+                        rs.getString("bio"),
+                        rs.getString("image")
                 );
             } else {
                 System.out.println("User not found in database");  // Debug
@@ -99,7 +102,7 @@ public class UserRepository {
         List<Card> cards = new ArrayList<>();
 
         try(Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
             System.out.println("Executing SQL: " + stmt.toString()); // Debugging
@@ -129,7 +132,7 @@ public class UserRepository {
         List<Card> deck = new ArrayList<>();
 
         try(Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
             System.out.println("Executing SQL: " + stmt.toString()); // Debugging
@@ -160,8 +163,8 @@ public class UserRepository {
         String updateDeckSQL = "UPDATE cards SET in_deck = TRUE WHERE owner = ? AND id = ?";
 
         try(Connection conn = DatabaseManager.getConnection();
-             PreparedStatement resetStmt = conn.prepareStatement(resetDeckSQL);
-             PreparedStatement updateStmt = conn.prepareStatement(updateDeckSQL)) {
+            PreparedStatement resetStmt = conn.prepareStatement(resetDeckSQL);
+            PreparedStatement updateStmt = conn.prepareStatement(updateDeckSQL)) {
 
             // Remove all of the user's cards from the deck
             System.out.println("Executing SQL: " + resetDeckSQL + " with username = " + username); // Debugging
@@ -191,13 +194,22 @@ public class UserRepository {
     }
 
     public boolean updateUser(String username, User updatedUser) {
-        String sql = "UPDATE users SET password = ? WHERE username = ?";
+        User existingUser = getUserByUsername(username);
+        if(existingUser == null) {
+            return false;
+        }
+
+        String sql = "UPDATE users SET fullname = ?, bio = ?, image = ?, password = COALESCE(?, password) WHERE username = ?";
 
         try(Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, updatedUser.getPassword());  // Passwort ändern
-            stmt.setString(2, username);
+            stmt.setString(1, updatedUser.getFullname());
+            stmt.setString(2, updatedUser.getBio());
+            stmt.setString(3, updatedUser.getImage());
+            stmt.setString(4, updatedUser.getPassword());
+            stmt.setString(5, username);
+
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
         } catch(SQLException e) {

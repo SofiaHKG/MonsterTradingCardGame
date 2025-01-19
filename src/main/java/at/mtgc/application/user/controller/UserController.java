@@ -69,19 +69,36 @@ public class UserController implements Application {
         Response response = new Response();
         System.out.println("Processing GET user request: " + request.getPath()); // Debug
 
-        // Username extrahieren
+        // Extract useraname from URL
         String[] parts = request.getPath().split("/");
         if(parts.length < 3) {
             response.setStatus(Status.BAD_REQUEST);
             response.setBody("Invalid username\n");
             return response;
         }
-
         String username = parts[2];
-        System.out.println("Extracted username: " + username); // Debug
 
+        // 1) Check token
+        String token = request.getHeader("Authorization");
+        if(token == null || !token.startsWith("Bearer ")) {
+            // -> 401 "Unauthorized"
+            response.setStatus(Status.UNAUTHORIZED);
+            response.setBody("Missing or invalid token");
+            return response;
+        }
+        String tokenUser = token.replace("Bearer ","").replace("-mtcgToken","");
+
+        // 2) Only admin or owner allowed to query
+        if( !tokenUser.equals("admin") && !tokenUser.equals(username) ) {
+            response.setStatus(Status.FORBIDDEN);
+            response.setBody("You can only retrieve your own user data (or be admin).");
+            return response;
+        }
+
+        // 3) Then check DB
         User user = userService.getUserByUsername(username);
         if(user == null) {
+            // -> 404
             response.setStatus(Status.NOT_FOUND);
             response.setBody("User not found\n");
             return response;
@@ -89,7 +106,23 @@ public class UserController implements Application {
 
         response.setStatus(Status.OK);
         response.setHeader("Content-Type", "application/json");
-        response.setBody("{\"username\":\"" + user.getUsername() + "\", \"token\":\"" + user.getToken() + "\", \"coins\": " + user.getCoins() + "}");
+        response.setBody("""
+        {
+          "username": "%s",
+          "token": "%s",
+          "coins": %d,
+          "Name": "%s",
+          "Bio": "%s",
+          "Image": "%s"
+        }
+        """.formatted(
+                user.getUsername(),
+                user.getToken(),
+                user.getCoins(),
+                user.getFullname(),
+                user.getBio(),
+                user.getImage()
+        ));
         return response;
     }
 
@@ -272,7 +305,7 @@ public class UserController implements Application {
             return response;
         }
 
-        String username = token.replace("Bearer ", "").replace("-mtcgToken", "");
+        String tokenUser = token.replace("Bearer ","").replace("-mtcgToken","");
         String[] parts = request.getPath().split("/");
 
         if(parts.length < 3) {
@@ -285,8 +318,8 @@ public class UserController implements Application {
         String targetUsername = parts[2];
 
         // Check if user is editing himself
-        if(!username.equals(targetUsername)) {
-            System.out.println("Forbidden: User " + username + " tried to update " + targetUsername); // Debug
+        if(!tokenUser.equals(targetUsername)) {
+            System.out.println("Forbidden: User " + tokenUser + " tried to update " + targetUsername); // Debug
             response.setStatus(Status.FORBIDDEN);
             response.setBody("{\"message\":\"You can only update your own profile\"}");
             return response;
@@ -307,7 +340,9 @@ public class UserController implements Application {
             }
 
             response.setStatus(Status.OK);
+            response.setHeader("Content-Type", "application/json");
             response.setBody("{\"message\":\"User updated successfully\"}");
+
         } catch(IOException e) {
             System.out.println("Exception: " + e.getMessage()); // Debug
             response.setStatus(Status.INTERNAL_SERVER_ERROR);
