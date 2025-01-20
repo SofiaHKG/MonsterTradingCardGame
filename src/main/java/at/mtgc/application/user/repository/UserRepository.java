@@ -218,4 +218,27 @@ public class UserRepository {
         }
     }
 
+    public User getUserStats(String username) {
+        String sql = "SELECT username, wins, losses, elo FROM users WHERE username = ?";
+
+        try(Connection conn = DatabaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+
+            if(rs.next()) {
+                return new User(
+                        rs.getString("username"),
+                        rs.getInt("wins"),
+                        rs.getInt("losses"),
+                        rs.getInt("elo")
+                );
+            }
+        } catch(SQLException e) {
+            System.err.println("Error retrieving stats: " + e.getMessage());
+        }
+        return null;
+    }
+
 }

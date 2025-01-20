@@ -43,6 +43,8 @@ public class UserController implements Application {
                         return handleGetCards(request);
                     } else if(request.getPath().equals("/deck")) {
                         return handleGetDeck(request);
+                    } else if(request.getPath().equals("/stats")) {
+                        return handleGetStats(request);
                     }
                 }
                 case PUT -> {
@@ -349,6 +351,47 @@ public class UserController implements Application {
             response.setBody("{\"message\":\"Error processing request\"}");
         }
 
+        return response;
+    }
+
+    private Response handleGetStats(Request request) {
+        Response response = new Response();
+
+        // 1) Check tokem
+        String token = request.getHeader("Authorization");
+        if(token == null || !token.startsWith("Bearer ")) {
+            response.setStatus(Status.UNAUTHORIZED);
+            response.setBody("{\"message\":\"Missing or invalid token\"}");
+            return response;
+        }
+
+        // 2) Extract username from token
+        String username = token.replace("Bearer ", "").replace("-mtcgToken", "");
+
+        // 3) Retrieve user stats
+        User userStats = userService.getUserStats(username);
+        if(userStats == null) {
+            response.setStatus(Status.NOT_FOUND);
+            response.setBody("{\"message\":\"User stats not found\"}");
+            return response;
+        }
+
+        // 4) JSON answer
+        response.setStatus(Status.OK);
+        response.setHeader("Content-Type", "application/json");
+        response.setBody("""
+        {
+          "username": "%s",
+          "wins": %d,
+          "losses": %d,
+          "elo": %d
+        }
+        """.formatted(
+                    userStats.getUsername(),
+                    userStats.getWins(),
+                    userStats.getLosses(),
+                    userStats.getElo()
+            ));
         return response;
     }
 

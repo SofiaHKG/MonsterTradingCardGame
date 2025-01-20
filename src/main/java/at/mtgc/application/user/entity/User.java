@@ -26,6 +26,10 @@ public class User {
     @JsonProperty("Image")
     private String image;
 
+    private int wins;
+    private int losses;
+    private int elo;
+
     public User() {}
 
     public User(
@@ -46,6 +50,13 @@ public class User {
         this.fullname = fullname;
         this.bio = bio;
         this.image = image;
+    }
+
+    public User(String username, int wins, int losses, int elo) {
+        this.username = username;
+        this.wins = wins;
+        this.losses = losses;
+        this.elo = elo;
     }
 
     @JsonProperty("username")
@@ -92,4 +103,13 @@ public class User {
 
     public String getImage() { return image; }
     public void setImage(String image) { this.image = image; }
+
+    public int getWins() { return wins; }
+    public void setWins(int wins) { this.wins = wins; }
+
+    public int getLosses() { return losses; }
+    public void setLosses(int losses) { this.losses = losses; }
+
+    public int getElo() { return elo; }
+    public void setElo(int elo) { this.elo = elo; }
 }

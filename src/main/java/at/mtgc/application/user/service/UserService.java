@@ -70,4 +70,8 @@ public class UserService {
         return userRepository.updateUser(username, updatedUser);
     }
 
+    public User getUserStats(String username) {
+        return userRepository.getUserStats(username);
+    }
+
 }
