@@ -75,6 +75,7 @@ public class Router implements Application {
         addRoute("/cards", userController);
         addRoute("/deck", userController);
         addRoute("/stats", userController);
+        addRoute("/scoreboard", userController);
 
         // Package Routes
         PackageRepository packageRepository = new PackageRepository();

@@ -3,6 +3,7 @@ package at.mtgc.application.user.service;
 import at.mtgc.application.user.entity.User;
 import at.mtgc.application.user.repository.UserRepository;
 import at.mtgc.application.packages.entity.Card;
+import at.mtgc.application.user.entity.ScoreboardEntry;
 
 import java.util.List;
 
@@ -72,6 +73,10 @@ public class UserService {
 
     public User getUserStats(String username) {
         return userRepository.getUserStats(username);
+    }
+
+    public List<ScoreboardEntry> getScoreboard() {
+        return userRepository.getScoreboard();
     }
 
 }

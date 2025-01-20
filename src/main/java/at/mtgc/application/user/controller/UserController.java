@@ -7,6 +7,8 @@ import at.mtgc.server.http.Status;
 import at.mtgc.application.user.entity.User;
 import at.mtgc.application.user.service.UserService;
 import at.mtgc.application.packages.entity.Card;
+import at.mtgc.application.user.entity.ScoreboardEntry;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -45,6 +47,8 @@ public class UserController implements Application {
                         return handleGetDeck(request);
                     } else if(request.getPath().equals("/stats")) {
                         return handleGetStats(request);
+                    } else if(request.getPath().equals("/scoreboard")) {
+                        return handleGetScoreboard(request);
                     }
                 }
                 case PUT -> {
@@ -392,6 +396,41 @@ public class UserController implements Application {
                     userStats.getLosses(),
                     userStats.getElo()
             ));
+        return response;
+    }
+
+    private Response handleGetScoreboard(Request request) {
+        Response response = new Response();
+        System.out.println("Processing GET /scoreboard request"); // Debugging
+
+        // 1) Check token
+        String token = request.getHeader("Authorization");
+        if(token == null || !token.startsWith("Bearer ")) {
+            System.out.println("Missing or invalid token"); // Debugging
+            response.setStatus(Status.UNAUTHORIZED);
+            response.setBody("{\"message\":\"Missing or invalid token\"}");
+            return response;
+        }
+
+        // 2) Retrieve scoreboard
+        List<ScoreboardEntry> scoreboard = userService.getScoreboard();
+        if(scoreboard.isEmpty()) {
+            response.setStatus(Status.NOT_FOUND);
+            response.setBody("{\"message\":\"No users found\"}");
+            return response;
+        }
+
+        // 3) JSON answer
+        response.setStatus(Status.OK);
+        response.setHeader("Content-Type", "application/json");
+
+        try {
+            response.setBody(objectMapper.writeValueAsString(scoreboard));
+        } catch(IOException e) {
+            response.setStatus(Status.INTERNAL_SERVER_ERROR);
+            response.setBody("{\"message\":\"Error serializing scoreboard\"}");
+        }
+
         return response;
     }
 

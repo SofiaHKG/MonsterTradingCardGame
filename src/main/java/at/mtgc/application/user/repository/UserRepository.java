@@ -3,6 +3,7 @@ package at.mtgc.application.user.repository;
 import at.mtgc.application.user.entity.User;
 import at.mtgc.application.packages.entity.Card;
 import at.mtgc.server.util.DatabaseManager;
+import at.mtgc.application.user.entity.ScoreboardEntry;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -239,6 +240,30 @@ public class UserRepository {
             System.err.println("Error retrieving stats: " + e.getMessage());
         }
         return null;
+    }
+
+    public List<ScoreboardEntry> getScoreboard() {
+        String sql = "SELECT username, wins, losses, elo FROM users ORDER BY elo DESC";
+        List<ScoreboardEntry> scoreboard = new ArrayList<>();
+
+        try(Connection conn = DatabaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery()) {
+
+            while(rs.next()) {
+                scoreboard.add(new ScoreboardEntry(
+                        rs.getString("username"),
+                        rs.getInt("wins"),
+                        rs.getInt("losses"),
+                        rs.getInt("elo")
+                ));
+            }
+
+        } catch(SQLException e) {
+            System.err.println("Error retrieving scoreboard: " + e.getMessage());
+        }
+
+        return scoreboard;
     }
 
 }
