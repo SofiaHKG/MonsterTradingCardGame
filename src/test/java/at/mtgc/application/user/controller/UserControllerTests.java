@@ -153,7 +153,7 @@ public class UserControllerTests {
     // Test 7
     @Test
     public void testGetOtherUserDataForbidden() {
-        // Register tow users: userA and userB
+        // Register two users: userA and userB
         Request regA = new Request();
         regA.setMethod(Method.POST);
         regA.setPath("/users");
@@ -184,5 +184,74 @@ public class UserControllerTests {
         getUserB.setHeader("Authorization", "Bearer " + tokenA);
         Response getUserBResponse = userController.handle(getUserB);
         assertEquals(Status.FORBIDDEN, getUserBResponse.getStatus(), "UserA should not be allowed to access userB's data");
+    }
+
+    // Test 8
+    @Test
+    public void testUpdateOwnProfileSuccess() {
+        // Register and login user "updateUser"
+        Request reg = new Request();
+        reg.setMethod(Method.POST);
+        reg.setPath("/users");
+        reg.setBody("{\"Username\":\"updateUser\", \"Password\":\"updatePass\"}");
+        Response regResponse = userController.handle(reg);
+        assertEquals(Status.CREATED, regResponse.getStatus(), "Registration should return 201 Created");
+
+        Request login = new Request();
+        login.setMethod(Method.POST);
+        login.setPath("/sessions");
+        login.setBody("{\"Username\":\"updateUser\", \"Password\":\"updatePass\"}");
+        Response loginResponse = userController.handle(login);
+        assertEquals(Status.OK, loginResponse.getStatus(), "Login should return 200 OK");
+        String token = loginResponse.getBody().trim();
+
+        // Updating own user profile via PUT /users/updateUser
+        Request updateReq = new Request();
+        updateReq.setMethod(Method.PUT);
+        updateReq.setPath("/users/updateUser");
+        updateReq.setHeader("Authorization", "Bearer " + token);
+        // Send new data (Name, Bio, Image)
+        updateReq.setBody("{\"username\":\"updateUser\", \"password\":\"updatePass\", \"Name\":\"New Name\", \"Bio\":\"New Bio\", \"Image\":\":-)\"}");
+        Response updateResp = userController.handle(updateReq);
+        assertEquals(Status.OK, updateResp.getStatus(), "Profile update should return 200 OK");
+        assertTrue(updateResp.getBody().contains("User updated successfully"), "Response should confirm profile update");
+    }
+
+    // Test 9
+    @Test
+    public void testUpdateOtherProfileForbidden() {
+        // Register two users: userX und userY
+        Request regX = new Request();
+        regX.setMethod(Method.POST);
+        regX.setPath("/users");
+        regX.setBody("{\"Username\":\"userX\", \"Password\":\"passX\"}");
+        Response resX = userController.handle(regX);
+        assertEquals(Status.CREATED, resX.getStatus(), "Registration of userX should succeed");
+
+        Request regY = new Request();
+        regY.setMethod(Method.POST);
+        regY.setPath("/users");
+        regY.setBody("{\"Username\":\"userY\", \"Password\":\"passY\"}");
+        Response resY = userController.handle(regY);
+        assertEquals(Status.CREATED, resY.getStatus(), "Registration of userY should succeed");
+
+        // Login as userX
+        Request loginX = new Request();
+        loginX.setMethod(Method.POST);
+        loginX.setPath("/sessions");
+        loginX.setBody("{\"Username\":\"userX\", \"Password\":\"passX\"}");
+        Response loginXResponse = userController.handle(loginX);
+        assertEquals(Status.OK, loginXResponse.getStatus(), "Login of userX should succeed");
+        String tokenX = loginXResponse.getBody().trim();
+
+        // userX attempts to update userY profile
+        Request updateReq = new Request();
+        updateReq.setMethod(Method.PUT);
+        updateReq.setPath("/users/userY");
+        updateReq.setHeader("Authorization", "Bearer " + tokenX);
+        updateReq.setBody("{\"username\":\"userY\", \"password\":\"passY\", \"Name\":\"Hacked Name\", \"Bio\":\"Hacked Bio\", \"Image\":\":-(\"}");
+        Response updateResp = userController.handle(updateReq);
+        assertEquals(Status.FORBIDDEN, updateResp.getStatus(), "Updating another user's profile should be forbidden");
+        assertTrue(updateResp.getBody().contains("You can only update your own profile"), "Response should indicate that profile update is forbidden");
     }
 }
