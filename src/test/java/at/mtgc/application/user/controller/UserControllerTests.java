@@ -149,4 +149,40 @@ public class UserControllerTests {
         assertEquals(Status.OK, getResponse.getStatus(), "Fetching own user data should return 200 OK");
         assertTrue(getResponse.getBody().contains("dataUser"), "Response should contain the username 'dataUser'");
     }
+
+    // Test 7
+    @Test
+    public void testGetOtherUserDataForbidden() {
+        // Register tow users: userA and userB
+        Request regA = new Request();
+        regA.setMethod(Method.POST);
+        regA.setPath("/users");
+        regA.setBody("{\"Username\":\"userA\", \"Password\":\"passA\"}");
+        Response resA = userController.handle(regA);
+        assertEquals(Status.CREATED, resA.getStatus(), "Registration of userA should succeed");
+
+        Request regB = new Request();
+        regB.setMethod(Method.POST);
+        regB.setPath("/users");
+        regB.setBody("{\"Username\":\"userB\", \"Password\":\"passB\"}");
+        Response resB = userController.handle(regB);
+        assertEquals(Status.CREATED, resB.getStatus(), "Registration of userB should succeed");
+
+        // Login as userA
+        Request loginA = new Request();
+        loginA.setMethod(Method.POST);
+        loginA.setPath("/sessions");
+        loginA.setBody("{\"Username\":\"userA\", \"Password\":\"passA\"}");
+        Response loginAResponse = userController.handle(loginA);
+        assertEquals(Status.OK, loginAResponse.getStatus(), "Login of userA should succeed");
+        String tokenA = loginAResponse.getBody().trim();
+
+        // userA tries to retrieve userB data
+        Request getUserB = new Request();
+        getUserB.setMethod(Method.GET);
+        getUserB.setPath("/users/userB");
+        getUserB.setHeader("Authorization", "Bearer " + tokenA);
+        Response getUserBResponse = userController.handle(getUserB);
+        assertEquals(Status.FORBIDDEN, getUserBResponse.getStatus(), "UserA should not be allowed to access userB's data");
+    }
 }
