@@ -98,4 +98,55 @@ public class UserControllerTests {
         Response loginResponse = userController.handle(loginRequest);
         assertEquals(Status.UNAUTHORIZED, loginResponse.getStatus(), "Login with wrong password should return 401 Unauthorized");
     }
+
+    // Test 5
+    @Test
+    public void testTokenUpdateOnLogin() {
+        // Registering user "tokenUser"
+        Request registrationRequest = new Request();
+        registrationRequest.setMethod(Method.POST);
+        registrationRequest.setPath("/users");
+        registrationRequest.setBody("{\"Username\":\"tokenUser\", \"Password\":\"mypassword\"}");
+        Response regResponse = userController.handle(registrationRequest);
+        assertEquals(Status.CREATED, regResponse.getStatus(), "Registration should return 201 Created");
+
+        // Login "tokenUser" and check for token
+        Request loginRequest = new Request();
+        loginRequest.setMethod(Method.POST);
+        loginRequest.setPath("/sessions");
+        loginRequest.setBody("{\"Username\":\"tokenUser\", \"Password\":\"mypassword\"}");
+        Response loginResponse = userController.handle(loginRequest);
+        assertEquals(Status.OK, loginResponse.getStatus(), "Login should return 200 OK");
+        String expectedToken = "tokenUser-mtcgToken";
+        assertTrue(loginResponse.getBody().contains(expectedToken), "Token should be " + expectedToken);
+    }
+
+    // Test 6
+    @Test
+    public void testGetOwnUserDataSuccess() {
+        // Register and login user "dataUser"
+        Request registrationRequest = new Request();
+        registrationRequest.setMethod(Method.POST);
+        registrationRequest.setPath("/users");
+        registrationRequest.setBody("{\"Username\":\"dataUser\", \"Password\":\"dataPass\"}");
+        Response regResponse = userController.handle(registrationRequest);
+        assertEquals(Status.CREATED, regResponse.getStatus(), "Registration should return 201 Created");
+
+        Request loginRequest = new Request();
+        loginRequest.setMethod(Method.POST);
+        loginRequest.setPath("/sessions");
+        loginRequest.setBody("{\"Username\":\"dataUser\", \"Password\":\"dataPass\"}");
+        Response loginResponse = userController.handle(loginRequest);
+        assertEquals(Status.OK, loginResponse.getStatus(), "Login should return 200 OK");
+        String token = loginResponse.getBody().trim();
+
+        // Retrieving own data via GET /users/dataUser
+        Request getRequest = new Request();
+        getRequest.setMethod(Method.GET);
+        getRequest.setPath("/users/dataUser");
+        getRequest.setHeader("Authorization", "Bearer " + token);
+        Response getResponse = userController.handle(getRequest);
+        assertEquals(Status.OK, getResponse.getStatus(), "Fetching own user data should return 200 OK");
+        assertTrue(getResponse.getBody().contains("dataUser"), "Response should contain the username 'dataUser'");
+    }
 }
