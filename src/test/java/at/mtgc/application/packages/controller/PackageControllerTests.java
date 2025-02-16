@@ -4,8 +4,15 @@ import at.mtgc.server.http.Method;
 import at.mtgc.server.http.Request;
 import at.mtgc.server.http.Response;
 import at.mtgc.server.http.Status;
+import at.mtgc.server.util.DatabaseManager;
 import at.mtgc.application.packages.repository.PackageRepository;
 import at.mtgc.application.packages.service.PackageService;
+import at.mtgc.application.user.controller.UserController;
+import at.mtgc.application.user.repository.UserRepository;
+import at.mtgc.application.user.service.UserService;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -62,5 +69,84 @@ public class PackageControllerTests {
         Response response = packageController.handle(request);
         assertEquals(Status.BAD_REQUEST, response.getStatus(), "Creating a package with wrong card count should return 400 BAD REQUEST");
         assertTrue(response.getBody().contains("A package must contain exactly 5 cards"), "Response should indicate card count error");
+    }
+
+    // Test 12
+    @Test
+    public void testAcquirePackageSuccess() {
+        // Register "acquireUser"
+        UserRepository userRepository = new UserRepository();
+        UserService userService = new UserService(userRepository);
+        UserController userController = new UserController(userService);
+        Request regUserReq = new Request();
+        regUserReq.setMethod(Method.POST);
+        regUserReq.setPath("/users");
+        regUserReq.setBody("{\"Username\":\"acquireUser\", \"Password\":\"acquirePass\"}");
+        Response regUserResp = userController.handle(regUserReq);
+        assertEquals(Status.CREATED, regUserResp.getStatus(), "User registration for acquireUser should succeed");
+
+        // Create package
+        Request createRequest = new Request();
+        createRequest.setMethod(Method.POST);
+        createRequest.setPath("/packages");
+        String jsonBody = "["
+                + "{\"Id\":\"66666666-6666-6666-6666-666666666666\", \"Name\":\"WaterGoblin\", \"Damage\":10.0},"
+                + "{\"Id\":\"77777777-7777-7777-7777-777777777777\", \"Name\":\"Dragon\", \"Damage\":50.0},"
+                + "{\"Id\":\"88888888-8888-8888-8888-888888888888\", \"Name\":\"WaterSpell\", \"Damage\":20.0},"
+                + "{\"Id\":\"99999999-9999-9999-9999-999999999999\", \"Name\":\"Ork\", \"Damage\":45.0},"
+                + "{\"Id\":\"00000000-0000-0000-0000-000000000000\", \"Name\":\"FireSpell\", \"Damage\":25.0}"
+                + "]";
+        createRequest.setBody(jsonBody);
+        createRequest.setHeader("Authorization", "Bearer admin-mtcgToken");
+        Response createResponse = packageController.handle(createRequest);
+        assertEquals(Status.CREATED, createResponse.getStatus(), "Package creation should succeed for acquisition test");
+
+        // Successfull acquisition of packet by "acquireUser"
+        Request acquireRequest = new Request();
+        acquireRequest.setMethod(Method.POST);
+        acquireRequest.setPath("/transactions/packages");
+        acquireRequest.setHeader("Authorization", "Bearer acquireUser-mtcgToken");
+        acquireRequest.setBody("");
+        Response acquireResponse = packageController.handle(acquireRequest);
+        assertEquals(Status.CREATED, acquireResponse.getStatus(), "Package acquisition should return 201 CREATED");
+        assertTrue(acquireResponse.getBody().contains("Package acquired successfully"), "Response should confirm package acquisition");
+    }
+
+    // Test 13
+    @Test
+    public void testAcquirePackageFailure() {
+        // Register "noPackageUser"
+        UserRepository userRepository = new UserRepository();
+        UserService userService = new UserService(userRepository);
+        UserController userController = new UserController(userService);
+        Request regUserReq = new Request();
+        regUserReq.setMethod(Method.POST);
+        regUserReq.setPath("/users");
+        regUserReq.setBody("{\"Username\":\"noPackageUser\", \"Password\":\"noPackagePass\"}");
+        Response regUserResp = userController.handle(regUserReq);
+        assertEquals(Status.CREATED, regUserResp.getStatus(), "User registration for noPackageUser should succeed");
+
+        // Set coins of noPackageUser to 0 to simulate not having enough coins for packet acquisition
+        setUserCoinsToZero("noPackageUser");
+
+        Request acquireRequest = new Request();
+        acquireRequest.setMethod(Method.POST);
+        acquireRequest.setPath("/transactions/packages");
+        acquireRequest.setHeader("Authorization", "Bearer noPackageUser-mtcgToken");
+        acquireRequest.setBody("");
+        Response acquireResponse = packageController.handle(acquireRequest);
+        assertEquals(Status.BAD_REQUEST, acquireResponse.getStatus(), "Package acquisition should fail when insufficient coins");
+        assertTrue(acquireResponse.getBody().contains("Not enough coins or no package available"), "Response should indicate insufficient coins or no package");
+    }
+
+    // Helper method to set coins to 0
+    private void setUserCoinsToZero(String username) {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("UPDATE users SET coins = 0 WHERE username = ?")) {
+            stmt.setString(1, username);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            fail("Failed to update coins for user " + username + ": " + e.getMessage());
+        }
     }
 }
