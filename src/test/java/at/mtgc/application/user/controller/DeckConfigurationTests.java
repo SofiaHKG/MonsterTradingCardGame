@@ -106,4 +106,38 @@ public class DeckConfigurationTests {
         assertEquals(Status.BAD_REQUEST, updateDeckResp.getStatus(), "Configuring a deck with fewer than 4 cards should return 400 BAD REQUEST");
         assertTrue(updateDeckResp.getBody().contains("Deck must contain exactly 4 cards"), "Response should indicate incorrect deck size");
     }
+
+    // Test 16
+    @Test
+    public void testConfigureDeckWithInvalidCards() {
+        String username = "deckUser3";
+        // Registering user
+        Request regReq = new Request();
+        regReq.setMethod(Method.POST);
+        regReq.setPath("/users");
+        regReq.setBody("{\"Username\":\"" + username + "\", \"Password\":\"pass\"}");
+        Response regResp = userController.handle(regReq);
+        assertEquals(Status.CREATED, regResp.getStatus(), "User registration should succeed");
+
+        // Insert 3 valid cards for the user
+        String cardId1 = "66666666-6666-6666-6666-666666666667";
+        String cardId2 = "77777777-7777-7777-7777-777777777778";
+        String cardId3 = "88888888-8888-8888-8888-888888888889";
+        addCardForUser(username, cardId1, "WaterGoblin", 10.0);
+        addCardForUser(username, cardId2, "Dragon", 50.0);
+        addCardForUser(username, cardId3, "WaterSpell", 20.0);
+
+        // Use one card ID that does NOT belong to the user
+        String invalidCardId = "99999999-9999-9999-9999-999999999998";
+
+        // Send PUT /deck request with 4 card IDs (one of which is invalid)
+        Request updateDeckReq = new Request();
+        updateDeckReq.setMethod(Method.PUT);
+        updateDeckReq.setPath("/deck");
+        updateDeckReq.setBody("[\"" + cardId1 + "\", \"" + cardId2 + "\", \"" + cardId3 + "\", \"" + invalidCardId + "\"]");
+        updateDeckReq.setHeader("Authorization", "Bearer " + username + "-mtcgToken");
+        Response updateDeckResp = userController.handle(updateDeckReq);
+        assertEquals(Status.BAD_REQUEST, updateDeckResp.getStatus(), "Configuring a deck with invalid card ownership should return 400 BAD REQUEST");
+        assertTrue(updateDeckResp.getBody().contains("Invalid cards or ownership issue"), "Response should indicate ownership error");
+    }
 }
