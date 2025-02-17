@@ -140,4 +140,48 @@ public class DeckConfigurationTests {
         assertEquals(Status.BAD_REQUEST, updateDeckResp.getStatus(), "Configuring a deck with invalid card ownership should return 400 BAD REQUEST");
         assertTrue(updateDeckResp.getBody().contains("Invalid cards or ownership issue"), "Response should indicate ownership error");
     }
+
+    // Test 17
+    @Test
+    public void testGetConfiguredDeckJSON() {
+        String username = "deckUser4";
+        // Registering user and add 4 cards
+        Request regReq = new Request();
+        regReq.setMethod(Method.POST);
+        regReq.setPath("/users");
+        regReq.setBody("{\"Username\":\"" + username + "\", \"Password\":\"pass\"}");
+        Response regResp = userController.handle(regReq);
+        assertEquals(Status.CREATED, regResp.getStatus(), "User registration should succeed");
+
+        String cardId1 = "aaaaaaaa-0000-0000-0000-000000000001";
+        String cardId2 = "aaaaaaaa-0000-0000-0000-000000000002";
+        String cardId3 = "aaaaaaaa-0000-0000-0000-000000000003";
+        String cardId4 = "aaaaaaaa-0000-0000-0000-000000000004";
+        addCardForUser(username, cardId1, "WaterGoblin", 10.0);
+        addCardForUser(username, cardId2, "Dragon", 50.0);
+        addCardForUser(username, cardId3, "WaterSpell", 20.0);
+        addCardForUser(username, cardId4, "Ork", 45.0);
+
+        // Configure deck
+        Request updateDeckReq = new Request();
+        updateDeckReq.setMethod(Method.PUT);
+        updateDeckReq.setPath("/deck");
+        updateDeckReq.setBody("[\"" + cardId1 + "\", \"" + cardId2 + "\", \"" + cardId3 + "\", \"" + cardId4 + "\"]");
+        updateDeckReq.setHeader("Authorization", "Bearer " + username + "-mtcgToken");
+        Response updateDeckResp = userController.handle(updateDeckReq);
+        assertEquals(Status.OK, updateDeckResp.getStatus(), "Deck configuration should succeed");
+
+        // Retrieve deck in JSON format
+        Request getDeckReq = new Request();
+        getDeckReq.setMethod(Method.GET);
+        getDeckReq.setPath("/deck"); // No query parameter -> JSON format
+        getDeckReq.setHeader("Authorization", "Bearer " + username + "-mtcgToken");
+        Response getDeckResp = userController.handle(getDeckReq);
+        assertEquals(Status.OK, getDeckResp.getStatus(), "Retrieving deck should return 200 OK");
+        // Check response for JSON representation of the 4 cards
+        assertTrue(getDeckResp.getBody().contains("\"Id\":\"" + cardId1 + "\""), "Response should contain cardId1");
+        assertTrue(getDeckResp.getBody().contains("\"Id\":\"" + cardId2 + "\""), "Response should contain cardId2");
+        assertTrue(getDeckResp.getBody().contains("\"Id\":\"" + cardId3 + "\""), "Response should contain cardId3");
+        assertTrue(getDeckResp.getBody().contains("\"Id\":\"" + cardId4 + "\""), "Response should contain cardId4");
+    }
 }
