@@ -9,6 +9,9 @@ import at.mtgc.application.user.repository.UserRepository;
 import at.mtgc.application.packages.controller.PackageController;
 import at.mtgc.application.packages.service.PackageService;
 import at.mtgc.application.packages.repository.PackageRepository;
+import at.mtgc.application.trading.controller.TradingController;
+import at.mtgc.application.trading.repository.TradingRepository;
+import at.mtgc.application.trading.service.TradingService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,6 +55,10 @@ public class Router implements Application {
             return routes.get(pathOnly).handle(request);
         }
 
+        if(pathOnly.startsWith("/tradings/")) {
+            return routes.get("/tradings").handle(request);
+        }
+
         if(pathOnly.startsWith("/users/")) {
             return routes.get("/users/{username}").handle(request);
         }
@@ -84,5 +91,11 @@ public class Router implements Application {
 
         addRoute("/packages", packageController);
         addRoute("/transactions/packages", packageController);
+
+        TradingRepository tradingRepository = new TradingRepository();
+        TradingService tradingService = new TradingService(tradingRepository, userRepository);
+        TradingController tradingController = new TradingController(tradingService);
+
+        addRoute("/tradings", tradingController);
     }
 }
