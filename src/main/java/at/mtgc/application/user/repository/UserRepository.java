@@ -13,11 +13,10 @@ import java.util.UUID;
 public class UserRepository {
 
     public boolean save(User user) {
-
         String sql = "INSERT INTO users (username, password, token) VALUES (?, ?, ?)";
 
         try(Connection conn = DatabaseManager.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, user.getUsername());
             stmt.setString(2, user.getPassword());
@@ -30,6 +29,7 @@ public class UserRepository {
         }
     }
 
+    // Find by username (for login)
     public User findByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
 
@@ -40,12 +40,22 @@ public class UserRepository {
             ResultSet rs = stmt.executeQuery();
 
             if(rs.next()) {
-                User user = new User(rs.getString("username"), rs.getString("password"));
-                user.setToken(rs.getString("token"));
+                User user = new User(
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getString("token"),
+                        rs.getInt("coins"),
+                        rs.getString("fullname"),
+                        rs.getString("bio"),
+                        rs.getString("image")
+                );
+                user.setWins(rs.getInt("wins"));
+                user.setLosses(rs.getInt("losses"));
+                user.setElo(rs.getInt("elo"));
                 return user;
             }
         } catch(SQLException e) {
-            System.err.println("Error retrieving user: " + e.getMessage());
+            System.err.println("Error retrieving user (findByUsername): " + e.getMessage());
         }
         return null;
     }
@@ -78,15 +88,19 @@ public class UserRepository {
 
             if(rs.next()) {
                 System.out.println("User found: " + rs.getString("username"));  // Debug
-                return new User(
+                User user = new User(
                         rs.getString("username"),
                         rs.getString("password"),
                         rs.getString("token"),
                         rs.getInt("coins"),
-                        rs.getString("fullName"),
+                        rs.getString("fullname"),
                         rs.getString("bio"),
                         rs.getString("image")
                 );
+                user.setWins(rs.getInt("wins"));
+                user.setLosses(rs.getInt("losses"));
+                user.setElo(rs.getInt("elo"));
+                return user;
             } else {
                 System.out.println("User not found in database");  // Debug
             }
@@ -97,8 +111,6 @@ public class UserRepository {
     }
 
     public List<Card> getUserCards(String username) {
-        System.out.println("Executing SQL query: SELECT id, name, damage FROM cards WHERE owner = '" + username + "'"); // Debug
-
         String sql = "SELECT id, name, damage FROM cards WHERE owner = ?";
         List<Card> cards = new ArrayList<>();
 
@@ -106,9 +118,7 @@ public class UserRepository {
             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
-            System.out.println("Executing SQL: " + stmt.toString()); // Debugging
             ResultSet rs = stmt.executeQuery();
-
             while(rs.next()) {
                 cards.add(new Card(
                         rs.getString("id"),
@@ -116,15 +126,9 @@ public class UserRepository {
                         rs.getDouble("damage")
                 ));
             }
-
-            if(cards.isEmpty()) {
-                System.out.println("No cards found for user: " + username); // Debugging
-            }
-
         } catch(SQLException e) {
             System.err.println("Error retrieving cards for user " + username + ": " + e.getMessage());
         }
-
         return cards;
     }
 
@@ -136,9 +140,7 @@ public class UserRepository {
             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, username);
-            System.out.println("Executing SQL: " + stmt.toString()); // Debugging
             ResultSet rs = stmt.executeQuery();
-
             while(rs.next()) {
                 deck.add(new Card(
                         rs.getString("id"),
@@ -147,15 +149,14 @@ public class UserRepository {
                 ));
             }
 
+            // If not exactly 4 cards then return empty list
             if(deck.size() != 4) {
-                System.out.println("User " + username + " has an incomplete deck."); // Debugging
-                return new ArrayList<>(); // Returns empty list
+                System.out.println("User " + username + " deck not 4 => empty deck returned");
+                return new ArrayList<>();
             }
-
         } catch(SQLException e) {
             System.err.println("Error retrieving deck for user " + username + ": " + e.getMessage());
         }
-
         return deck;
     }
 
@@ -167,29 +168,23 @@ public class UserRepository {
             PreparedStatement resetStmt = conn.prepareStatement(resetDeckSQL);
             PreparedStatement updateStmt = conn.prepareStatement(updateDeckSQL)) {
 
-            // Remove all of the user's cards from the deck
-            System.out.println("Executing SQL: " + resetDeckSQL + " with username = " + username); // Debugging
+            // Remove all deck cards
             resetStmt.setString(1, username);
             resetStmt.executeUpdate();
 
-            // Put the new 4 cards into the deck
+            // Activate the four new deck cards
             for(String cardId : cardIds) {
-                System.out.println("Executing SQL: " + updateDeckSQL + " with username = " + username + " and card ID = " + cardId); // Debugging
                 updateStmt.setString(1, username);
                 updateStmt.setObject(2, UUID.fromString(cardId));
                 int rowsAffected = updateStmt.executeUpdate();
-
                 if(rowsAffected == 0) {
-                    System.err.println("Failed to update deck: Card ID " + cardId + " not found for user " + username);
+                    System.err.println("Failed to put card " + cardId + " into deck of " + username);
                     return false;
                 }
             }
-
-            System.out.println("Deck successfully updated for user: " + username); // Debugging
             return true;
-
         } catch(SQLException e) {
-            System.err.println("Error updating deck for user " + username + ": " + e.getMessage());
+            System.err.println("Error updating deck for " + username + ": " + e.getMessage());
             return false;
         }
     }
@@ -210,7 +205,6 @@ public class UserRepository {
             stmt.setString(3, updatedUser.getImage());
             stmt.setString(4, updatedUser.getPassword());
             stmt.setString(5, username);
-
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
         } catch(SQLException e) {
@@ -227,14 +221,14 @@ public class UserRepository {
 
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
-
             if(rs.next()) {
-                return new User(
+                User user = new User(
                         rs.getString("username"),
                         rs.getInt("wins"),
                         rs.getInt("losses"),
                         rs.getInt("elo")
                 );
+                return user;
             }
         } catch(SQLException e) {
             System.err.println("Error retrieving stats: " + e.getMessage());
@@ -258,12 +252,27 @@ public class UserRepository {
                         rs.getInt("elo")
                 ));
             }
-
         } catch(SQLException e) {
             System.err.println("Error retrieving scoreboard: " + e.getMessage());
         }
-
         return scoreboard;
     }
 
+    // ELO and stats
+    public boolean updateUserStats(User user) {
+        String sql = "UPDATE users SET wins = ?, losses = ?, elo = ? WHERE username = ?";
+        try(Connection conn = DatabaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, user.getWins());
+            stmt.setInt(2, user.getLosses());
+            stmt.setInt(3, user.getElo());
+            stmt.setString(4, user.getUsername());
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } catch(SQLException e) {
+            System.err.println("Error updating user stats: " + e.getMessage());
+        }
+        return false;
+    }
 }

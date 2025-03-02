@@ -12,6 +12,8 @@ import at.mtgc.application.packages.repository.PackageRepository;
 import at.mtgc.application.trading.controller.TradingController;
 import at.mtgc.application.trading.repository.TradingRepository;
 import at.mtgc.application.trading.service.TradingService;
+import at.mtgc.application.battle.controller.BattleController;
+import at.mtgc.application.battle.service.BattleService;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,11 +43,11 @@ public class Router implements Application {
 
         int questionMarkIndex = rawPath.indexOf('?');
         if(questionMarkIndex != -1) {
-            pathOnly    = rawPath.substring(0, questionMarkIndex);
+            pathOnly = rawPath.substring(0, questionMarkIndex);
             queryString = rawPath.substring(questionMarkIndex + 1);
         } else {
             // no '?', so no query string
-            pathOnly    = rawPath;
+            pathOnly = rawPath;
         }
 
         request.setPath(pathOnly);
@@ -97,5 +99,10 @@ public class Router implements Application {
         TradingController tradingController = new TradingController(tradingService);
 
         addRoute("/tradings", tradingController);
+
+        BattleService battleService = new BattleService(userRepository);
+        BattleController battleController = new BattleController(battleService);
+
+        addRoute("/battles", battleController);
     }
 }
