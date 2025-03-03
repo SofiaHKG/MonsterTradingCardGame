@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.UUID;
+
 
 public class TradingController implements Application {
 
@@ -47,6 +47,7 @@ public class TradingController implements Application {
             return handleExecuteDeal(request);
         }
 
+        // FAllback 404
         Response resp = new Response();
         resp.setStatus(Status.NOT_FOUND);
         resp.setBody("Not Found");
@@ -59,20 +60,19 @@ public class TradingController implements Application {
         // token check
         String username = checkToken(request, response);
         if(username == null) {
-            return response;  // => enthält bereits Fehler
+            return response;  // UNAUTHORIZED
         }
 
         List<TradingDeal> deals = tradingService.getAllDeals();
-        if(deals.isEmpty()) {
-            response.setStatus(Status.NO_CONTENT); // => "204 No Content"
-            return response;
-        }
-
         response.setStatus(Status.OK);
         response.setHeader("Content-Type", "application/json");
         try {
-            response.setBody(objectMapper.writeValueAsString(deals));
-        } catch(IOException e) {
+            if(deals.isEmpty()) {
+                response.setBody("[]");
+            } else {
+                response.setBody(objectMapper.writeValueAsString(deals));
+            }
+        } catch (IOException e) {
             response.setStatus(Status.INTERNAL_SERVER_ERROR);
             response.setBody("{\"message\":\"Error serializing trading deals\"}");
         }
@@ -88,11 +88,12 @@ public class TradingController implements Application {
 
         try {
             TradingDeal deal = objectMapper.readValue(request.getBody(), TradingDeal.class);
-            // Erstelle Deal
+            // createDeal can throw HttpException
             tradingService.createDeal(username, deal);
 
             response.setStatus(Status.CREATED);
             response.setBody("{\"message\":\"Trading deal successfully created\"}");
+
         } catch(IOException e) {
             response.setStatus(Status.BAD_REQUEST);
             response.setBody("{\"message\":\"Invalid JSON payload\"}");
@@ -113,6 +114,7 @@ public class TradingController implements Application {
             return response;
         }
 
+        // Parse ID from path
         String[] parts = request.getPath().split("/");
         if(parts.length < 3) {
             response.setStatus(Status.BAD_REQUEST);
@@ -155,8 +157,9 @@ public class TradingController implements Application {
 
             tradingService.executeTrade(username, dealId, offeredCardId);
 
-            response.setStatus(Status.OK);
+            response.setStatus(Status.CREATED);
             response.setBody("{\"message\":\"Trade executed successfully\"}");
+
         } catch(IOException e) {
             response.setStatus(Status.BAD_REQUEST);
             response.setBody("{\"message\":\"Invalid JSON payload\"}");

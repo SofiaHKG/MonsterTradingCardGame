@@ -8,9 +8,9 @@ import java.util.UUID;
 public class TradingDeal {
     private UUID id;
     private UUID cardToTrade;
-    private String type;           // "monster" oder "spell"
+    private String type;
     private double minimumDamage;
-    private String owner;          // Wird im Service befüllt, nicht vom Client
+    private String owner;
 
     @JsonCreator
     public TradingDeal(
@@ -19,14 +19,12 @@ public class TradingDeal {
             @JsonProperty("Type") String type,
             @JsonProperty("MinimumDamage") double minimumDamage
     ) {
-        // Wir wandeln direkt in UUID um
         this.id = UUID.fromString(id);
         this.cardToTrade = UUID.fromString(cardToTrade);
         this.type = type;
         this.minimumDamage = minimumDamage;
     }
 
-    // Falls du einen No-Args-Konstruktor brauchst:
     public TradingDeal() {}
 
     @JsonProperty("Id")
@@ -49,7 +47,6 @@ public class TradingDeal {
     @JsonProperty("MinimumDamage")
     public void setMinimumDamage(double minimumDamage) { this.minimumDamage = minimumDamage; }
 
-    // Dieser Wert kommt später aus dem Service (wer das Deal erstellt).
     public String getOwner() { return owner; }
     public void setOwner(String owner) { this.owner = owner; }
 }
