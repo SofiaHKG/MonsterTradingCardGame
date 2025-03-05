@@ -1,4 +1,4 @@
-package at.mtgc.application.user.controller;
+package integration.at.mtgc.application.user.controller;
 
 import at.mtgc.server.http.Method;
 import at.mtgc.server.http.Request;
@@ -6,23 +6,47 @@ import at.mtgc.server.http.Response;
 import at.mtgc.server.http.Status;
 import at.mtgc.application.user.service.UserService;
 import at.mtgc.application.user.repository.UserRepository;
+import at.mtgc.application.user.controller.UserController;
+import at.mtgc.server.util.DatabaseManager;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class UserControllerTests {
+public class UserControllerIntegrationTests {
 
     private UserController userController;
 
     @BeforeEach
     public void setUp() {
+        cleanupDatabase();
+
         UserRepository userRepository = new UserRepository();
         UserService userService = new UserService(userRepository);
         userController = new UserController(userService);
     }
 
-    // Test 1
+    @AfterEach
+    public void tearDown() {
+        cleanupDatabase();
+    }
+
+    private void cleanupDatabase() {
+        try (Connection conn = DatabaseManager.getConnection()) {
+            conn.prepareStatement("DELETE FROM trading_deals").executeUpdate();
+            conn.prepareStatement("DELETE FROM cards").executeUpdate();
+            conn.prepareStatement("DELETE FROM packages").executeUpdate();
+            conn.prepareStatement("DELETE FROM users WHERE username <> 'admin'").executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("DB cleanup failed", e);
+        }
+    }
+
     @Test
     public void testUserRegistrationSuccess() {
         // Simulating request for registering new user
@@ -34,10 +58,9 @@ public class UserControllerTests {
         Response response = userController.handle(request);
 
         assertEquals(Status.CREATED, response.getStatus(), "User registration should return 201 CREATED");
-        assertTrue(response.getBody().contains("User successfully created"), "Response should confirm successful registration");
+        assertTrue(response.getBody().contains("User successfully created"));
     }
 
-    // Test 2
     @Test
     public void testUserRegistrationConflict() {
         // Register same user twice
@@ -54,10 +77,9 @@ public class UserControllerTests {
         request2.setBody("{\"Username\":\"duplicateUser\", \"Password\":\"password\"}");
         Response response2 = userController.handle(request2);
         assertEquals(Status.CONFLICT, response2.getStatus(), "Duplicate registration should return 409 CONFLICT");
-        assertTrue(response2.getBody().contains("User already exists"), "Response should indicate that the user already exists");
+        assertTrue(response2.getBody().contains("User already exists"));
     }
 
-    // Test 3
     @Test
     public void testUserLoginSuccess() {
         // Register user "loginUser"
@@ -79,7 +101,6 @@ public class UserControllerTests {
         assertTrue(loginResponse.getBody().contains(expectedToken), "Token should be " + expectedToken);
     }
 
-    // Test 4
     @Test
     public void testUserLoginFailure() {
         // Register user "wrongPassUser"
@@ -99,7 +120,6 @@ public class UserControllerTests {
         assertEquals(Status.UNAUTHORIZED, loginResponse.getStatus(), "Login with wrong password should return 401 Unauthorized");
     }
 
-    // Test 5
     @Test
     public void testTokenUpdateOnLogin() {
         // Registering user "tokenUser"
@@ -121,7 +141,6 @@ public class UserControllerTests {
         assertTrue(loginResponse.getBody().contains(expectedToken), "Token should be " + expectedToken);
     }
 
-    // Test 6
     @Test
     public void testGetOwnUserDataSuccess() {
         // Register and login user "dataUser"
@@ -150,7 +169,6 @@ public class UserControllerTests {
         assertTrue(getResponse.getBody().contains("dataUser"), "Response should contain the username 'dataUser'");
     }
 
-    // Test 7
     @Test
     public void testGetOtherUserDataForbidden() {
         // Register two users: userA and userB
@@ -186,7 +204,6 @@ public class UserControllerTests {
         assertEquals(Status.FORBIDDEN, getUserBResponse.getStatus(), "UserA should not be allowed to access userB's data");
     }
 
-    // Test 8
     @Test
     public void testUpdateOwnProfileSuccess() {
         // Register and login user "updateUser"
@@ -214,10 +231,9 @@ public class UserControllerTests {
         updateReq.setBody("{\"username\":\"updateUser\", \"password\":\"updatePass\", \"Name\":\"New Name\", \"Bio\":\"New Bio\", \"Image\":\":-)\"}");
         Response updateResp = userController.handle(updateReq);
         assertEquals(Status.OK, updateResp.getStatus(), "Profile update should return 200 OK");
-        assertTrue(updateResp.getBody().contains("User updated successfully"), "Response should confirm profile update");
+        assertTrue(updateResp.getBody().contains("User updated successfully"));
     }
 
-    // Test 9
     @Test
     public void testUpdateOtherProfileForbidden() {
         // Register two users: userX und userY
@@ -252,6 +268,6 @@ public class UserControllerTests {
         updateReq.setBody("{\"username\":\"userY\", \"password\":\"passY\", \"Name\":\"Hacked Name\", \"Bio\":\"Hacked Bio\", \"Image\":\":-(\"}");
         Response updateResp = userController.handle(updateReq);
         assertEquals(Status.FORBIDDEN, updateResp.getStatus(), "Updating another user's profile should be forbidden");
-        assertTrue(updateResp.getBody().contains("You can only update your own profile"), "Response should indicate that profile update is forbidden");
+        assertTrue(updateResp.getBody().contains("You can only update your own profile"));
     }
 }

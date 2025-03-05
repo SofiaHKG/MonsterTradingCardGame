@@ -1,4 +1,4 @@
-package at.mtgc.application.user.controller;
+package integration.at.mtgc.application.user.controller;
 
 import at.mtgc.server.http.Method;
 import at.mtgc.server.http.Request;
@@ -7,29 +7,51 @@ import at.mtgc.server.http.Status;
 import at.mtgc.server.util.DatabaseManager;
 import at.mtgc.application.user.repository.UserRepository;
 import at.mtgc.application.user.service.UserService;
+import at.mtgc.application.user.controller.UserController;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class DeckConfigurationTests {
+public class DeckConfigurationIntegrationTests {
 
     private UserController userController;
 
     @BeforeEach
     public void setUp() {
+        cleanupDatabase();
+
         UserRepository userRepository = new UserRepository();
         UserService userService = new UserService(userRepository);
         userController = new UserController(userService);
     }
 
-    // Helper method to insert a card for a user into the database
+    @AfterEach
+    public void tearDown() {
+        cleanupDatabase();
+    }
+
+    private void cleanupDatabase() {
+        try(Connection conn = DatabaseManager.getConnection()) {
+            conn.prepareStatement("DELETE FROM trading_deals").executeUpdate();
+            conn.prepareStatement("DELETE FROM cards").executeUpdate();
+            conn.prepareStatement("DELETE FROM packages").executeUpdate();
+            conn.prepareStatement("DELETE FROM users WHERE username <> 'admin'").executeUpdate();
+        } catch(SQLException e) {
+            throw new RuntimeException("DB cleanup failed", e);
+        }
+    }
+
+    // Helper method to insert a card for a user into the DB
     private void addCardForUser(String username, String cardId, String name, double damage) {
-        try (Connection conn = DatabaseManager.getConnection();
+        try(Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(
                      "INSERT INTO cards (id, name, damage, owner, in_deck) VALUES (?, ?, ?, ?, false)"
              )) {
@@ -38,12 +60,11 @@ public class DeckConfigurationTests {
             stmt.setDouble(3, damage);
             stmt.setString(4, username);
             stmt.executeUpdate();
-        } catch (SQLException e) {
+        } catch(SQLException e) {
             fail("Failed to add card for user " + username + ": " + e.getMessage());
         }
     }
 
-    // Test 14
     @Test
     public void testConfigureDeckSuccess() {
         String username = "deckUser";
@@ -73,10 +94,9 @@ public class DeckConfigurationTests {
         updateDeckReq.setHeader("Authorization", "Bearer " + username + "-mtcgToken");
         Response updateDeckResp = userController.handle(updateDeckReq);
         assertEquals(Status.OK, updateDeckResp.getStatus(), "Deck configuration should return 200 OK");
-        assertTrue(updateDeckResp.getBody().contains("Deck updated successfully"), "Response should confirm deck update");
+        assertTrue(updateDeckResp.getBody().contains("Deck updated successfully"));
     }
 
-    // Test 15
     @Test
     public void testConfigureDeckTooFewCards() {
         String username = "deckUser2";
@@ -104,10 +124,9 @@ public class DeckConfigurationTests {
         updateDeckReq.setHeader("Authorization", "Bearer " + username + "-mtcgToken");
         Response updateDeckResp = userController.handle(updateDeckReq);
         assertEquals(Status.BAD_REQUEST, updateDeckResp.getStatus(), "Configuring a deck with fewer than 4 cards should return 400 BAD REQUEST");
-        assertTrue(updateDeckResp.getBody().contains("Deck must contain exactly 4 cards"), "Response should indicate incorrect deck size");
+        assertTrue(updateDeckResp.getBody().contains("Deck must contain exactly 4 cards"));
     }
 
-    // Test 16
     @Test
     public void testConfigureDeckWithInvalidCards() {
         String username = "deckUser3";
@@ -138,10 +157,9 @@ public class DeckConfigurationTests {
         updateDeckReq.setHeader("Authorization", "Bearer " + username + "-mtcgToken");
         Response updateDeckResp = userController.handle(updateDeckReq);
         assertEquals(Status.BAD_REQUEST, updateDeckResp.getStatus(), "Configuring a deck with invalid card ownership should return 400 BAD REQUEST");
-        assertTrue(updateDeckResp.getBody().contains("Invalid cards or ownership issue"), "Response should indicate ownership error");
+        assertTrue(updateDeckResp.getBody().contains("Invalid cards or ownership issue"));
     }
 
-    // Test 17
     @Test
     public void testGetConfiguredDeckJSON() {
         String username = "deckUser4";

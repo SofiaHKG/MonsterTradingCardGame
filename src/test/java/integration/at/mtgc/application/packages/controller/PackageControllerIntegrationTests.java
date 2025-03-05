@@ -1,4 +1,4 @@
-package at.mtgc.application.packages.controller;
+package integration.at.mtgc.application.packages.controller;
 
 import at.mtgc.server.http.Method;
 import at.mtgc.server.http.Request;
@@ -7,29 +7,51 @@ import at.mtgc.server.http.Status;
 import at.mtgc.server.util.DatabaseManager;
 import at.mtgc.application.packages.repository.PackageRepository;
 import at.mtgc.application.packages.service.PackageService;
+import at.mtgc.application.packages.controller.PackageController;
 import at.mtgc.application.user.controller.UserController;
 import at.mtgc.application.user.repository.UserRepository;
 import at.mtgc.application.user.service.UserService;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class PackageControllerTests {
+public class PackageControllerIntegrationTests {
 
     private PackageController packageController;
 
     @BeforeEach
     public void setUp() {
+        cleanupDatabase();
+
         PackageRepository packageRepository = new PackageRepository();
         PackageService packageService = new PackageService(packageRepository);
         packageController = new PackageController(packageService);
     }
 
-    // Test 10
+    @AfterEach
+    public void tearDown() {
+        cleanupDatabase();
+    }
+
+    private void cleanupDatabase() {
+        try(Connection conn = DatabaseManager.getConnection()) {
+            conn.prepareStatement("DELETE FROM trading_deals").executeUpdate();
+            conn.prepareStatement("DELETE FROM cards").executeUpdate();
+            conn.prepareStatement("DELETE FROM packages").executeUpdate();
+            // Delete all users except for admin
+            conn.prepareStatement("DELETE FROM users WHERE username <> 'admin'").executeUpdate();
+        } catch(SQLException e) {
+            throw new RuntimeException("DB cleanup failed", e);
+        }
+    }
+
     @Test
     public void testCreatePackageSuccess() {
         Request request = new Request();
@@ -49,10 +71,9 @@ public class PackageControllerTests {
 
         Response response = packageController.handle(request);
         assertEquals(Status.CREATED, response.getStatus(), "Package creation should return 201 CREATED");
-        assertTrue(response.getBody().contains("Package created successfully"), "Response should confirm package creation");
+        assertTrue(response.getBody().contains("Package created successfully"));
     }
 
-    // Test 11
     @Test
     public void testCreatePackageWrongCardCount() {
         Request request = new Request();
@@ -68,10 +89,9 @@ public class PackageControllerTests {
 
         Response response = packageController.handle(request);
         assertEquals(Status.BAD_REQUEST, response.getStatus(), "Creating a package with wrong card count should return 400 BAD REQUEST");
-        assertTrue(response.getBody().contains("A package must contain exactly 5 cards"), "Response should indicate card count error");
+        assertTrue(response.getBody().contains("A package must contain exactly 5 cards"));
     }
 
-    // Test 12
     @Test
     public void testAcquirePackageSuccess() {
         // Register "acquireUser"
@@ -99,7 +119,7 @@ public class PackageControllerTests {
         createRequest.setBody(jsonBody);
         createRequest.setHeader("Authorization", "Bearer admin-mtcgToken");
         Response createResponse = packageController.handle(createRequest);
-        assertEquals(Status.CREATED, createResponse.getStatus(), "Package creation should succeed for acquisition test");
+        assertEquals(Status.CREATED, createResponse.getStatus());
 
         // Successfull acquisition of packet by "acquireUser"
         Request acquireRequest = new Request();
@@ -109,10 +129,9 @@ public class PackageControllerTests {
         acquireRequest.setBody("");
         Response acquireResponse = packageController.handle(acquireRequest);
         assertEquals(Status.CREATED, acquireResponse.getStatus(), "Package acquisition should return 201 CREATED");
-        assertTrue(acquireResponse.getBody().contains("Package acquired successfully"), "Response should confirm package acquisition");
+        assertTrue(acquireResponse.getBody().contains("Package acquired successfully"));
     }
 
-    // Test 13
     @Test
     public void testAcquirePackageFailure() {
         // Register "noPackageUser"
@@ -136,16 +155,16 @@ public class PackageControllerTests {
         acquireRequest.setBody("");
         Response acquireResponse = packageController.handle(acquireRequest);
         assertEquals(Status.BAD_REQUEST, acquireResponse.getStatus(), "Package acquisition should fail when insufficient coins");
-        assertTrue(acquireResponse.getBody().contains("Not enough coins or no package available"), "Response should indicate insufficient coins or no package");
+        assertTrue(acquireResponse.getBody().contains("Not enough coins or no package available"));
     }
 
     // Helper method to set coins to 0
     private void setUserCoinsToZero(String username) {
-        try (Connection conn = DatabaseManager.getConnection();
+        try(Connection conn = DatabaseManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement("UPDATE users SET coins = 0 WHERE username = ?")) {
             stmt.setString(1, username);
             stmt.executeUpdate();
-        } catch (SQLException e) {
+        } catch(SQLException e) {
             fail("Failed to update coins for user " + username + ": " + e.getMessage());
         }
     }
