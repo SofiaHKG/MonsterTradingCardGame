@@ -3,9 +3,11 @@ package unit.at.mtgc.application.user.service;
 import at.mtgc.application.user.entity.User;
 import at.mtgc.application.user.repository.UserRepository;
 import at.mtgc.application.user.service.UserService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
