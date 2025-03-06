@@ -27,7 +27,7 @@ public class TradingService {
     }
 
     public void createDeal(String username, TradingDeal deal) throws SQLException {
-        // 1) Check if card belongs to user
+        // Check if card belongs to user
         Card cardToTrade = findCardById(deal.getCardToTrade());
         if(cardToTrade == null) {
             throw new HttpException(Status.NOT_FOUND, "Card not found in DB");
@@ -56,7 +56,7 @@ public class TradingService {
         deal.setOwner(username);
 
         if(tradingRepository.findDealById(deal.getId()) != null) {
-            // rollback
+            // Rollback
             lockCardForTrade(cardUUID, false);
             throw new HttpException(Status.CONFLICT, "Deal with this ID already exists");
         }
@@ -71,7 +71,7 @@ public class TradingService {
         if(deal == null) {
             throw new HttpException(Status.NOT_FOUND, "Deal not found");
         }
-        // only owner can delete
+        // Only owner can delete
         if(!deal.getOwner().equals(username)) {
             throw new HttpException(Status.FORBIDDEN, "You are not the owner of this deal");
         }
@@ -96,7 +96,7 @@ public class TradingService {
             throw new HttpException(Status.FORBIDDEN, "You cannot trade with yourself");
         }
 
-        //Find offeredCard
+        // Find offeredCard
         UUID offeredUUID = UUID.fromString(offeredCardId);
         Card offeredCard = findCardById(offeredUUID);
         if(offeredCard == null) {
@@ -115,7 +115,7 @@ public class TradingService {
             throw new HttpException(Status.FORBIDDEN, "Offered card is in deck");
         }
 
-        // Check damage + type
+        // Check damage and type
         if(!getCardType(offeredCard.getName()).equalsIgnoreCase(deal.getType())) {
             throw new HttpException(Status.FORBIDDEN, "Card type does not match the required type");
         }
@@ -180,16 +180,14 @@ public class TradingService {
 
     private Card findCardById(UUID cardId) {
         String sql = "SELECT id, name, damage FROM cards WHERE id = ?";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try(Connection conn = DatabaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setObject(1, cardId);
             ResultSet rs = stmt.executeQuery();
             if(rs.next()) {
-                // Achtung: in DB ist 'id' = UUID, wir bauen uns aber
-                // ein Card-Objekt mit String-Id:
                 return new Card(
-                        rs.getString("id"),     // e.g. "845f0dc7-..."
+                        rs.getString("id"),
                         rs.getString("name"),
                         rs.getDouble("damage")
                 );
@@ -202,8 +200,8 @@ public class TradingService {
 
     private String getOwnerOfCard(UUID cardId) {
         String sql = "SELECT owner FROM cards WHERE id = ?";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try(Connection conn = DatabaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, cardId);
             ResultSet rs = stmt.executeQuery();
             if(rs.next()) {
@@ -217,8 +215,8 @@ public class TradingService {
 
     private boolean isCardInDeck(UUID cardId) {
         String sql = "SELECT in_deck FROM cards WHERE id = ?";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try(Connection conn = DatabaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, cardId);
             ResultSet rs = stmt.executeQuery();
             if(rs.next()) {
@@ -232,8 +230,8 @@ public class TradingService {
 
     private boolean isCardLockedForTrade(UUID cardId) {
         String sql = "SELECT locked_for_trade FROM cards WHERE id = ?";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try(Connection conn = DatabaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setObject(1, cardId);
             ResultSet rs = stmt.executeQuery();
             if(rs.next()) {
@@ -247,8 +245,8 @@ public class TradingService {
 
     private void lockCardForTrade(UUID cardId, boolean lock) {
         String sql = "UPDATE cards SET locked_for_trade = ? WHERE id = ?";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try(Connection conn = DatabaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setBoolean(1, lock);
             stmt.setObject(2, cardId);
             stmt.executeUpdate();
@@ -258,8 +256,6 @@ public class TradingService {
     }
 
     private String getCardType(String cardName) {
-        // if cardName ends with "Spell" => "spell"
-        // sonst => "monster"
         String lower = cardName.toLowerCase();
         if(lower.contains("spell")) {
             return "spell";
