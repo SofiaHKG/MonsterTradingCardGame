@@ -260,14 +260,16 @@ public class UserRepository {
 
     // ELO and stats
     public boolean updateUserStats(User user) {
-        String sql = "UPDATE users SET wins = ?, losses = ?, elo = ? WHERE username = ?";
+        String sql = "UPDATE users SET wins = ?, losses = ?, elo = ?, coins = ? WHERE username = ?";
         try(Connection conn = DatabaseManager.getConnection();
             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, user.getWins());
             stmt.setInt(2, user.getLosses());
             stmt.setInt(3, user.getElo());
-            stmt.setString(4, user.getUsername());
+            stmt.setInt(4, user.getCoins());
+            stmt.setString(5, user.getUsername());
+
             int rows = stmt.executeUpdate();
             return rows > 0;
         } catch(SQLException e) {

@@ -141,6 +141,13 @@ public class BattleService {
         l.setLosses(l.getLosses() + 1);
         l.setElo(l.getElo() - 5);
 
+        // Unique feature
+        if(w.getWins() % 5 == 0) {
+            // +10 coins as a reward
+            w.setCoins(w.getCoins() + 10);
+            System.out.println("User " + winner + " reached " +  w.getWins() + " wins and earned +10 coins!");
+        }
+
         userRepository.updateUserStats(w);
         userRepository.updateUserStats(l);
     }
