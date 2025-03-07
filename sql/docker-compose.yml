@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: postgresdb
+    environment:
+      POSTGRES_USER: mtcgdb
+      POSTGRES_PASSWORD: mtcgpw
+      POSTGRES_DB: mtcg
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
